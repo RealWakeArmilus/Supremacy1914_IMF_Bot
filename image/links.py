@@ -1,0 +1,22 @@
+armies = 'https://i.gyazo.com/c3ecbe1fd2b0647ddb7e85e341bdd652.png'
+
+trade = 'https://i.gyazo.com/ba896e27d5e4822ca7c1138eef61bf65.png'
+
+capital = 'https://i.gyazo.com/101d5b8cb10836cf5044dce3632f157e.png'
+recruiting_office = 'https://i.gyazo.com/600788dd1870fb29efe8fe42aa057b4d.png'
+workshop = 'https://i.gyazo.com/9e14a8c7b5f741be52ca0bdfe6e905ee.png'
+barracks = 'https://i.gyazo.com/d2601ede220e033035a3cfc3e76a9cb0.png'
+fortress = 'https://i.gyazo.com/1e52f8424f5bf9143e316e0a7ef8acb7.png'
+harbour = 'https://i.gyazo.com/e8a7e64fd879ebc35ec0bdf25c7023f1.png'
+railway = 'https://i.gyazo.com/af6355ecea550bf83cb06c5070de3929.png'
+factory = 'https://i.gyazo.com/f1c2d07d0c237d0226ae379859571664.png'
+aerodrome = 'https://i.gyazo.com/3a64b0fba103fd83b6d81437b3d73ff9.png'
+
+silver = 'https://i.gyazo.com/b9a172c80b5d484de9c941610c3fcf37.png'
+fish = 'https://i.gyazo.com/c265a8d6c08de67c063c641439ae44bd.png'
+grain = 'https://i.gyazo.com/86096bea47e59bc88823204b285dcb3f.png'
+iron_one = 'https://i.gyazo.com/551a0694866e7bc2c8b7de25f3ba4bb4.png'
+lumber = 'https://i.gyazo.com/490c5920993b11d680f00801be320aad.png'
+coal = 'https://i.gyazo.com/71aab7216deaedd76c0dd555dff8a117.png'
+gas = 'https://i.gyazo.com/8b31cff66ae1fa55e69fc080b59e9b52.png'
+oil = 'https://i.gyazo.com/f9ceb94b5e691b5fcfb571743527c0dc.png'
