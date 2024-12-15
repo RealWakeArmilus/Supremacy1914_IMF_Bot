@@ -1,5 +1,33 @@
 import enum
 
+
+class TypeChat(enum.Enum):
+    """
+    :var USER: user
+    :var GROUP: group
+    :var SUPERGROUP: supergroup
+    :var CHANNEL: channel
+    :var UNKNOWN: unknown
+    """
+
+    USER : str = 'user'
+    GROUP : str = 'group'
+    SUPERGROUP : str = 'supergroup'
+    CHANNEL : str = 'channel'
+    UNKNOWN : str = 'unknown'
+
+
+class TypeUser(enum.Enum):
+    """
+    :var ADMIN: admin
+    :var MODERATOR: moderator
+    :var SIMPLE: simple
+    """
+    ADMIN : str = 'admin'
+    MODERATOR : str = 'moderator'
+    SIMPLE : str = 'simple'
+
+
 class VerifyStatus(enum.Enum):
 
     USER_OWNER_BOT : int = 1000
