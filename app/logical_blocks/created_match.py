@@ -62,8 +62,10 @@ async def choice_type_map(message: Message, state: FSMContext):
 
     try:
 
+        check_number = await master_db.check_number_match_exists(map_number)
+
         # Проверяем, существует ли карта в базе данных
-        if master_db.check_number_match_exists(map_number):
+        if check_number:
 
             await message.answer(
                 '❌ <b>Этот номер карты уже существует</b>. Пожалуйста, введите другой номер.',
@@ -122,7 +124,7 @@ async def confirm(callback: CallbackQuery, state: FSMContext):
 
     data_created_match = await state.get_data()
 
-    master_db.created_match(data_created_match['number'], data_created_match['type_map'])
+    await master_db.created_match(data_created_match['number'], data_created_match['type_map'])
 
     await state.clear()
 

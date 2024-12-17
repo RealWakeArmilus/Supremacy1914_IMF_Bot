@@ -1,6 +1,6 @@
 from aiogram import Router
 from aiogram.filters.command import Command
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 
 # import keyboards
 import app.keyboards as kb
