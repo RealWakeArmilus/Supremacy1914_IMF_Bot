@@ -7,7 +7,7 @@ import ClassesStatesMachine.SG as SG
 import app.DatabaseWork.master as master_db
 import app.keyboards as kb
 
-from app.message_designer.message_in_chat import delete_message
+from app.message_designer.deletezer import delete_message
 
 from aiogram import Router
 
@@ -15,7 +15,7 @@ router = Router()
 
 
 @router.callback_query(F.data == 'created_match')
-async def start(callback : CallbackQuery, state : FSMContext):
+async def start_created_match(callback : CallbackQuery, state : FSMContext):
 
     # transition notification create match
     await callback.answer(
@@ -139,4 +139,4 @@ async def restart(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
     # Вызываем функцию start_created_match
-    await start(callback, state)
+    await start_created_match(callback, state)

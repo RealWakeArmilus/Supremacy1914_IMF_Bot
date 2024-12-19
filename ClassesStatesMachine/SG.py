@@ -12,3 +12,8 @@ class SingUp(StatesGroup):
 class CreatedMatch(StatesGroup):
     number = State()
     type_map = State()
+
+
+# Определите состояния для хранения message_id
+class Form(StatesGroup):
+    photo_message_id = State()
