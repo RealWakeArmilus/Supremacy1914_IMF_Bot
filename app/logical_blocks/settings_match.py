@@ -1,9 +1,9 @@
 from aiogram import F
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
 # Импортируйте модули, которые используются внутри функций
 import app.DatabaseWork.master as master_db
-import app.keyboards as kb
+import app.keyboards.settings_match as kb
 
 from aiogram import Router
 
@@ -31,7 +31,6 @@ async def start_settings_match(callback : CallbackQuery):
         await callback.message.edit_text(
             'На текущий момент список матчей пуст.',
             parse_mode="html")
-
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith('SettingMatch_'))

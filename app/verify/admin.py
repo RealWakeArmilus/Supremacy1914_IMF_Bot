@@ -1,4 +1,4 @@
-import app.verication.checks as checks
+import app.verify.checks as checks
 import ClassesStatesMachine.Statuses as Status
 
 

@@ -1,11 +1,11 @@
 from asyncio.log import logger
 
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
 import app.DatabaseWork.master as master_db
-import app.keyboards as kb
+import app.keyboards.choice_state as kb
 
 from aiogram import Router
 
@@ -89,3 +89,4 @@ async def choice_state_from_number_match_for_user(callback: CallbackQuery):
         logger.error(f"Ошибка в функции choice_state_from_number_match_for_user: {error}")
         await callback.answer("Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.")
         await callback.message.edit_text('Произошла ошибка при обработке вашего запроса.')
+

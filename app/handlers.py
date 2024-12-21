@@ -4,18 +4,25 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, FSInputFile
 
 # import keyboards
-import app.keyboards as kb
-import app.verication.checks as checks
-import app.verication.admin as admin
+import app.keyboards.handlers as kb_handlers
+import app.keyboards.settings_match as kb_settings_match
+
+# import verify
+import app.verify.checks as checks
+import app.verify.admin as admin
+
+# import ClassState
 import ClassesStatesMachine.SG as SG
 
 # Для передачи сигнала в данный файл, что запуск команд идет здесь
 router = Router()
 
+# import routers from logical_blocks
 from app.logical_blocks.created_match import router as created_match_router
 from app.logical_blocks.settings_match import router as settings_match_router
 from app.logical_blocks.choice_state import router as choice_state_router
 
+# connect routers from logical_blocks
 router.include_router(created_match_router)
 router.include_router(settings_match_router)
 router.include_router(choice_state_router)
@@ -30,7 +37,7 @@ async def cmd_admin(message: Message):
 
         await message.answer(
             f'Здравствуйте администратор {message.from_user.full_name}.',
-            reply_markup=kb.admin_menu,
+            reply_markup=kb_handlers.admin_menu,
             parse_mode='html')
 
     elif status_type_user == admin.Status.TypeUser.SIMPLE:
@@ -49,7 +56,7 @@ async def cmd_start(message: Message, state: FSMContext):
 
     if status_type_chat == checks.Status.TypeChat.USER:
 
-        if await kb.numbers_match():
+        if await kb_settings_match.numbers_match():
 
             photo_path = 'image/exemple_number_match.jpg'
             photo = FSInputFile(photo_path)
@@ -58,7 +65,7 @@ async def cmd_start(message: Message, state: FSMContext):
                 photo,
                 'Выберите <b>Номер матча</b> из списка ниже.'
                 '\n<pre>Узнать номер карты можно в игре supremacy1914, как указано на скрине.</pre>',
-                reply_markup=await kb.numbers_match('ChoiceMatchForUser'),
+                reply_markup=await kb_settings_match.numbers_match('ChoiceMatchForUser'),
                 parse_mode='html')
 
             # Сохранение message_id фотографии в состоянии пользователя
