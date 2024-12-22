@@ -1,142 +1,142 @@
-from aiogram import F
+from aiogram import F, Router
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
+import logging
 
-# Импортируйте модули, которые используются внутри функций
+# Import required modules
 import ClassesStatesMachine.SG as SG
 import app.DatabaseWork.master as master_db
 import app.keyboards.created_match as kb
-
 from app.message_designer.deletezer import delete_message
+from app.MyException import InvalidMatchNumberFormatError
 
-from aiogram import Router
+logger = logging.getLogger(__name__)
 
 router = Router()
 
 
 @router.callback_query(F.data == 'created_match')
-async def start_created_match(callback : CallbackQuery, state : FSMContext):
-
-    # transition notification create match
+async def start_created_match(callback: CallbackQuery, state: FSMContext):
+    """
+    Initiates the map creation process by asking the admin to enter a map number.
+    """
     await callback.answer(
         'Вы перешли в создание карты.',
-        reply_markup=ReplyKeyboardRemove())
+        reply_markup=ReplyKeyboardRemove()
+    )
 
-    # Set the administrator's status to enter the card number
     await state.set_state(SG.CreatedMatch.number)
 
-    # message from callback to bot admin and delete previous bot message
     await callback.message.edit_text(
         'Введите пожалуйста <b>номер карты</b>, которой хотите создать:',
-        parse_mode="html")
+        parse_mode="html"
+    )
 
 
 @router.message(SG.CreatedMatch.number)
 async def choice_type_map(message: Message, state: FSMContext):
-
+    """
+    Handles the map number input, validates it, and moves to the next step if valid.
+    """
     map_number_input = message.text.strip()
 
-    map_number : int
-
     try:
-
         if not map_number_input.isdigit():
-
-            raise ValueError('Номер карты должен быть целым числом.')
+            raise InvalidMatchNumberFormatError('Номер карты должен быть целым числом.')
 
         if len(map_number_input) != 7:
-
-            raise ValueError('Номер карты должен состоять ровно из 7 цифр.')
+            raise InvalidMatchNumberFormatError('Номер карты должен состоять ровно из 7 цифр.')
 
         map_number = int(map_number_input)
 
-    except ValueError as error:
-
-        # Если введено не число, отправляем сообщение об ошибке
-        await message.answer(
-            f'❌ <b>Неверный формат номера карты.</b> \n{error} Попробуйте снова:',
-            parse_mode="html")
-
-        # We interrupt processing so that the user re-enters the card number
-        return
-
-    try:
-
-        check_number = await master_db.check_number_match_exists(map_number)
-
-        # Проверяем, существует ли карта в базе данных
-        if check_number:
-
+        # Check if the map number already exists in the database
+        if await master_db.check_number_match_exists(map_number):
             await message.answer(
                 '❌ <b>Этот номер карты уже существует</b>. Пожалуйста, введите другой номер.',
-                parse_mode="html")
-
-            # We interrupt processing so that the user re-enters the card number
+                parse_mode="html"
+            )
             return
 
-        # Если номер карты уникальный, сохраняем его в состоянии
+        # Save valid map number and proceed to the next state
         await state.update_data(number=map_number)
         await state.set_state(SG.CreatedMatch.type_map)
 
-        # Запрашиваем тип карты
         await message.answer(
             'Выберите <b>тип карты</b>:',
             reply_markup=kb.types_map,
-            parse_mode="html")
+            parse_mode="html"
+        )
 
+    except InvalidMatchNumberFormatError as error:
+        await message.answer(
+            f'❌ <b>Неверный формат номера карты.</b> \n{error} Попробуйте снова:',
+            parse_mode="html"
+        )
     except Exception as error:
-
-        # Обработка исключений (например, ошибка подключения к базе данных)
         await message.answer(
             '❌ <b>Произошла ошибка при проверке номера карты.</b> Попробуйте еще раз позже.',
-            parse_mode="html")
-
-        print(f"Ошибка при проверке номера карты: {error}")  # Логируем ошибку
+            parse_mode="html"
+        )
+        logger.error(f"Ошибка при проверке номера карты: {error}")
 
 
 @router.message(lambda message: message.text in ['Великая война'], SG.CreatedMatch.type_map)
-async def end(message: Message, state: FSMContext):
-
+async def set_map_type(message: Message, state: FSMContext):
+    """
+    Saves the chosen map type and provides a summary to the user.
+    """
     await state.update_data(type_map=message.text)
-
     data_created_match = await state.get_data()
 
+    # Temporary message for processing
     send_message = await message.answer("Обработка...",
-                         reply_markup=ReplyKeyboardRemove(),
-                         parse_mode="html")
+                                        reply_markup=ReplyKeyboardRemove(),
+                                        parse_mode="html")
 
     await delete_message(message.bot, message.chat.id, send_message.message_id)
 
     await message.answer(
         '<b>Информация о созданной карте</b>'
-        f'\n№ карты: {data_created_match['number']}'
-        f'\nType: {data_created_match['type_map']}',
+        f'\n№ карты: {data_created_match["number"]}'
+        f'\nТип: {data_created_match["type_map"]}',
         reply_markup=kb.confirm_created_map,
-        parse_mode="html")
+        parse_mode="html"
+    )
 
 
 @router.callback_query(F.data == 'confirm_creation')
-async def confirm(callback: CallbackQuery, state: FSMContext):
-
+async def confirm_map_creation(callback: CallbackQuery, state: FSMContext):
+    """
+    Confirms the creation of the map and triggers the database creation process.
+    """
     await callback.message.edit_text(
         'Запускаем создание необходимой среды для вашей карты.',
-        parse_mode="html")
+        parse_mode="html"
+    )
 
     data_created_match = await state.get_data()
 
-    await master_db.created_match(data_created_match['number'], data_created_match['type_map'])
+    try:
+        await master_db.created_match(data_created_match['number'], data_created_match['type_map'])
 
-    await state.clear()
+        await state.clear()
 
-    await callback.message.edit_text(
-        f'<b>Необходимая среда для карты</b> {data_created_match['number']} <b>создана.</b>',
-        parse_mode="html")
+        await callback.message.edit_text(
+            f'<b>Необходимая среда для карты</b> {data_created_match["number"]} <b>создана.</b>',
+            parse_mode="html"
+        )
+    except Exception as error:
+        await callback.message.edit_text(
+            '❌ <b>Произошла ошибка при создании среды для карты.</b> Попробуйте еще раз позже.',
+            parse_mode="html"
+        )
+        logger.error(f"Ошибка при создании карты: {error}")
 
 
 @router.callback_query(F.data == "restart_creation")
-async def restart(callback: CallbackQuery, state: FSMContext):
-
+async def restart_map_creation(callback: CallbackQuery, state: FSMContext):
+    """
+    Restarts the map creation process.
+    """
     await state.clear()
-
-    # Вызываем функцию start_created_match
     await start_created_match(callback, state)
