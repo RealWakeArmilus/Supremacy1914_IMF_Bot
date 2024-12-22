@@ -46,9 +46,9 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
     await delete_message_photo(callback, state)
 
 
-    request_state = await match_db.check_request_choice_state(number_match, callback.from_user.id)
+    request_state_from_database = await match_db.check_request_choice_state(number_match, callback.from_user.id)
 
-    if request_state is False:
+    if request_state_from_database is False:
 
         data_state = await match_db.check_choice_state_in_match_db(number_match, callback.from_user.id)
 
@@ -62,27 +62,36 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
 
         elif data_state is None:
 
-            await callback.message.answer(f'Выберите государство за которое играете, на карте: {number_match}.'
-                                          '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
-                                          reply_markup=await kb.free_states_match(f'ChoiceStateFromMatch_{number_match}', number_match),
-                                          parse_mode="html")
+            full_list_of_free_countries = await kb.free_states_match(f'ChoiceStateFromMatch_{number_match}', number_match)
+
+            if full_list_of_free_countries:
+
+                await callback.message.answer(f'Выберите государство за которое играете, на карте: {number_match}.'
+                                              '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
+                                              reply_markup=await kb.free_states_match(f'ChoiceStateFromMatch_{number_match}', number_match),
+                                              parse_mode="html")
+
+            elif full_list_of_free_countries is None:
+
+                await callback.message.answer('К сожалению в данном матче свободных государств нет.')
+
+            else:
+
+                await callback.message.answer('Что-то пошло не так "logical_blocks/choice_state/84"')
 
         else:
 
-            await callback.message.answer('Что-то пошло не так "logical_blocks/choice_state/65"')
+            await callback.message.answer('Что-то пошло не так "logical_blocks/choice_state/88"')
 
-    elif request_state:
+    elif request_state_from_database:
 
-        await callback.message.answer('По всей видимости ваша заявка была отклонена. '
-                                      '\nПопробуйте еще раз. Следуйте инструкции.',
-                                      reply_markup=await kb.free_states_match(f'ChoiceStateFromMatch_{number_match}', number_match),
+        await callback.message.answer('<b>Ваша заявка еще ожидает проверку.</b> '
+                                      '\nСледуйте инструкции, которая была выпущена после выбора государства.',
                                       parse_mode="html")
 
     else:
 
-        await callback.message.answer('Что-то пошло не так "logical_blocks/choice_state/76"')
-
-
+        await callback.message.answer('Что-то пошло не так "logical_blocks/choice_state/99"')
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith('ChoiceStateFromMatch_'))

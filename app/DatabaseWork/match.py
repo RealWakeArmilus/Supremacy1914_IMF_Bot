@@ -42,12 +42,12 @@ async def check_request_choice_state(number_match_db: str, user_id: int) -> bool
     :param user_id: message.from_user.id
     :return: True - заявка еще ждет проверки, False - заявка нет.
     """
-    data_telegram_id = SQLite.select_table(f'database/{number_match_db}.db',
+    data_requests = SQLite.select_table(f'database/{number_match_db}.db',
                                            'request_choice_state',
                                            ['telegram_id'])
 
-    for telegram_id in data_telegram_id:
-        if telegram_id == user_id:
+    for request in data_requests:
+        if request['telegram_id'] == user_id:
             return True
 
     return False
