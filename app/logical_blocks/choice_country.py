@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery
 # Импортируйте модули, которые используются внутри функций
 import app.DatabaseWork.master as master_db
 import app.DatabaseWork.match as match_db
-import app.keyboards.choice_state as kb
+import app.keyboards.choice_country as kb
 from app.message_designer.deletezer import delete_message_photo
 from app.message_designer.randomaizer import generate_custom_random_unique_word
 from app.utils import callback_utils
@@ -14,7 +14,7 @@ from app.utils import callback_utils
 router = Router()
 
 # import routers from logical_blocks
-from app.logical_blocks.verify_state import router as verify_state_router
+from app.logical_blocks.verify_country import router as verify_state_router
 from app.logical_blocks.country_menu import router as country_menu_router
 
 # connect routers from logical_blocks

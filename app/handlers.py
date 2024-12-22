@@ -20,7 +20,7 @@ router = Router()
 # import routers from logical_blocks
 from app.logical_blocks.created_match import router as created_match_router
 from app.logical_blocks.settings_match import router as settings_match_router
-from app.logical_blocks.choice_state import router as choice_state_router
+from app.logical_blocks.choice_country import router as choice_state_router
 
 # connect routers from logical_blocks
 router.include_router(created_match_router)

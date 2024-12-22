@@ -8,7 +8,7 @@ import app.DatabaseWork.master as master_db
 import app.DatabaseWork.match as match_db
 
 # import keyboards
-import app.keyboards.choice_state as kb
+import app.keyboards.choice_country as kb
 
 from aiogram import Router
 

@@ -113,7 +113,6 @@ async def deleted_match(number_match: str):
         return False
 
 
-
 async def created_table_user():
     """
     Создает с нуля базу данных master и таблицу users

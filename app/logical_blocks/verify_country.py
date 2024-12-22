@@ -1,4 +1,3 @@
-from asyncio.log import logger
 from aiogram import Router
 from aiogram.types import CallbackQuery
 
@@ -6,6 +5,7 @@ from aiogram.types import CallbackQuery
 import app.DatabaseWork.master as master_db
 import app.DatabaseWork.match as match_db
 from app.message_designer.deletezer import delete_message
+from app.utils import callback_utils
 
 router = Router()
 
@@ -13,10 +13,10 @@ router = Router()
 @router.callback_query(lambda c: c.data and c.data.startswith('ConfirmRequestCountryByAdmin_'))
 async def confirm_request_country_by_admin(callback: CallbackQuery):
 
-    unique_word = callback.data.split('_')[1]
-    number_match = callback.data.split('_')[2]
+    data_parts = callback_utils.parse_callback_data(callback.data, 'ConfirmRequestCountryByAdmin')
+    unique_word, number_match = data_parts[0], data_parts[1]
 
-    await callback.answer('Решение заявки')
+    await callback_utils.notify_user(callback, 'Решение заявки')
 
     try:
         # get data user who submitted the application
@@ -40,17 +40,16 @@ async def confirm_request_country_by_admin(callback: CallbackQuery):
         await delete_message(callback.bot, chat_id_admin, data_user['admin_decision_message_id'])
 
     except Exception as error:
-        logger.error(f"Ошибка при подтверждении заявки: {error}")
-        await callback.answer("Произошла ошибка при подтверждении заявки.")
+        await callback_utils.handle_error(callback, error, "Произошла ошибка при подтверждении заявки.")
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith('RejectRequestCountryByAdmin_'))
 async def reject_request_country_by_admin_(callback: CallbackQuery):
 
-    unique_word = callback.data.split('_')[1]
-    number_match = callback.data.split('_')[2]
+    data_parts = callback_utils.parse_callback_data(callback.data, 'RejectRequestCountryByAdmin')
+    unique_word, number_match = data_parts[0], data_parts[1]
 
-    await callback.answer('Решение заявки')
+    await callback_utils.notify_user(callback, 'Решение заявки')
 
     try:
         # get data user who submitted the request
@@ -75,6 +74,5 @@ async def reject_request_country_by_admin_(callback: CallbackQuery):
         await delete_message(callback.bot, chat_id_admin, data_user['admin_decision_message_id'])
 
     except Exception as error:
-        logger.error(f"Ошибка при отклонении заявки: {error}")
-        await callback.answer("Произошла ошибка при отклонении заявки.")
+        await callback_utils.handle_error(callback, error, "Произошла ошибка при отклонении заявки.")
 
