@@ -91,7 +91,7 @@ async def choice_type_map(message: Message, state: FSMContext):
             '❌ <b>Произошла ошибка при проверке номера карты.</b> Попробуйте еще раз позже.',
             parse_mode="html")
 
-        print(f"Ошибка при проверке номера карты: \n{error}")  # Логируем ошибку
+        print(f"Ошибка при проверке номера карты: {error}")  # Логируем ошибку
 
 
 @router.message(lambda message: message.text in ['Великая война'], SG.CreatedMatch.type_map)

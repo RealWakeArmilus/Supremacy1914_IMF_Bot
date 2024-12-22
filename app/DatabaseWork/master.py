@@ -1,3 +1,5 @@
+import os
+from asyncio.log import logger
 import sqlite3
 
 from SPyderSQL import SQLite, TypesSQLite
@@ -30,6 +32,11 @@ async def created_match(number_match: int, type_map: str):
                         {'name': TypesSQLite.text.value, 'telegram_id': TypesSQLite.integer.value, 'admin': TypesSQLite.blob.value},
                         True)
 
+    SQLite.create_table(f'database/{number_match}.db',
+                        'request_choice_state',
+                        {'telegram_id': TypesSQLite.integer.value, 'number_match': TypesSQLite.integer.value, 'name_state': TypesSQLite.text.value, 'unique_word': TypesSQLite.text.value, 'admin_decision_message_id': TypesSQLite.integer.value},
+                        True)
+
     data_name_states = await extraction_names_states(type_map)
 
     for name_state in data_name_states:
@@ -46,6 +53,11 @@ async def check_number_match_exists(number: int) -> bool:
     :param number: number_map
     :return:
     """
+    SQLite.create_table(name_master_db,
+                        'match',
+                        {'number': TypesSQLite.integer.value, 'type_map': TypesSQLite.text.value},
+                        True)
+
     number_matches = SQLite.select_table(name_master_db,
                                          'match',
                                          ['number'])
@@ -86,29 +98,36 @@ async def deleted_match(number_match: str):
         with sqlite3.connect(name_master_db) as db:
             db.execute("DELETE FROM match WHERE number = ?", (number_match,))
             db.commit()
-            return True
-    except sqlite3.Error as e:
-        print(f"Ошибка при удалении номера карты {number_match}: {e}")
+
+        database_path = f'database/{number_match}.db'
+
+        # Проверка, существует ли файл
+        if os.path.exists(database_path):
+            os.remove(database_path)
+            print(f"База данных {database_path} успешно удалена.")
+        else:
+            raise Exception(f"Файл {database_path} не найден.")
+
+        return True
+    except (sqlite3.Error, Exception) as e:
+        print(f"Ошибка при удалении номера карты {number_match} из таблицы match: {e}")
         return False
 
 
-async def check_choice_state_in_match_db(number_match_db: str, user_id: int) -> bool:
+
+async def created_table_user():
     """
-    Проверка пользователя на выбор государства в конкретном матче
-
-    :param number_match_db: 'database/{number_match_db}.db'
-    :param user_id: message.from_user.id
-    :return: True - пользователь уже выбрал государство, False - пользователь не выбирал государства
+    Создает с нуля базу данных master и таблицу users
     """
-    data_telegram_id = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'states',
-                                           ['telegram_id'])
+    SQLite.create_table(name_master_db,
+                        'users',
+                        {'telegram_id': TypesSQLite.integer.value, 'admin': TypesSQLite.integer.value},
+                        True)
 
-    for telegram_id in data_telegram_id:
-        if telegram_id == user_id:
-            return True
-
-    return False
+    # SQLite.insert_table(name_master_db,
+    #                     'users',
+    #                     ['telegram_id', 'admin'],
+    #                     (5311154389, True))
 
 
 async def get_telegram_id_admin() -> int:
@@ -116,9 +135,13 @@ async def get_telegram_id_admin() -> int:
     :return: telegram_id admin bota
     """
     data_users = SQLite.select_table(name_master_db,
-                                         'users',
-                                         ['telegram_id', 'admin'])
+                                     'users',
+                                     ['telegram_id', 'admin'])
 
     for user in data_users:
         if user['admin']:
             return user['telegram_id']
+
+
+
+

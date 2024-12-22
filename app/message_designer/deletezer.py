@@ -3,18 +3,21 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 
-async def delete_message(message, message_chat_id, send_message_message_id):
+async def delete_message(bot: Bot, message_chat_id, send_message_message_id):
     """
     deletes a specific message by message ID, provided that it is in one function and not in a callback
 
-    :param message: message.bot
+    :param bot: message.bot or callback.bot
     :param message_chat_id: message.chat.id
     :param send_message_message_id: send_message.message_id
     :return:
     """
-    await message.delete_message(
-        chat_id=message_chat_id,
-        message_id=send_message_message_id)
+    try:
+        await bot.delete_message(
+            chat_id=message_chat_id,
+            message_id=send_message_message_id)
+    except Exception as error:
+        print(f'Error "deletezer/delete_message": {error}')
 
 
 async def delete_message_photo(callback: CallbackQuery, state: FSMContext):

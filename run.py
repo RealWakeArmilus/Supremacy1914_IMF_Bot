@@ -24,7 +24,7 @@ async def main():
 
 if __name__ == "__main__":
 
-    log_processing(False)
+    log_processing(True)
 
     try:
         asyncio.run(main())

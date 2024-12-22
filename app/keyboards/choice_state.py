@@ -43,3 +43,21 @@ async def free_states_match(input_match_hash: str, number_match_db: str) -> Inli
 
     else:
         return None
+
+
+async def state_verify_by_admin(unique_word: str, number_match: str) -> InlineKeyboardMarkup | None:
+    """
+    Create keyboards from verify state by admin
+
+    :param number_match:
+    :param unique_word:
+    :return:
+    """
+    builder = InlineKeyboardBuilder()
+
+    builder.add(InlineKeyboardButton(text=str('✅ Подтвердить'), callback_data=f'ConfirmRequestStateByAdmin_{unique_word}_{number_match}'))
+    builder.add(InlineKeyboardButton(text=str('❌ Отклонить'), callback_data=f'RejectRequestStateByAdmin_{unique_word}_{number_match}'))
+
+    builder.adjust(1)
+
+    return builder.as_markup()
