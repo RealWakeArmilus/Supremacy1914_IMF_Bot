@@ -1,11 +1,10 @@
-from asyncio.log import logger
 import sqlite3
 from SPyderSQL import SQLite
 
 
-async def extraction_names_states(type_map_match: str) -> list:
+async def extraction_names_countries(type_match: str) -> list:
 
-    if type_map_match == 'Великая война':
+    if type_match == 'Великая война':
 
         return ["Финляндия", "Австро-венгрия", "Аравия", "Великобритания", "Восточная ливия",
                 "Восточный алжир", "Германская империя", "Гренландия", "Греция", "Египет",
@@ -15,25 +14,25 @@ async def extraction_names_states(type_map_match: str) -> list:
                 "Франция", "Центральные США", "Швеция", "Южная канада", "Южные США"]
 
 
-async def get_free_states_from_match_for_user(number_match_db: str) -> list:
+async def get_free_countries_from_match_for_user(number_match_db: str) -> list:
     """
     :param number_match_db: 'database/{number_match_db}.db'
-    :return: actual list free states from match for user
+    :return: actual list free countries from match for user
     """
     data_number_match = SQLite.select_table(f'database/{number_match_db}.db',
-                                            'states',
+                                            'countries',
                                             ['name', 'telegram_id'])
 
-    states_from_match = list()
+    countries_from_match = list()
 
-    for data_state in data_number_match:
-        if data_state['telegram_id'] == 0:
-            states_from_match.append(data_state['name'])
+    for data_country in data_number_match:
+        if data_country['telegram_id'] == 0:
+            countries_from_match.append(data_country['name'])
 
-    return states_from_match
+    return countries_from_match
 
 
-async def check_request_choice_state(number_match_db: str, user_id: int) -> bool:
+async def check_request_choice_country(number_match_db: str, user_id: int) -> bool:
     """
     Is there a player's application in the database?
     \nЕсть ли заявка от игрока в базе данных?
@@ -43,7 +42,7 @@ async def check_request_choice_state(number_match_db: str, user_id: int) -> bool
     :return: True - заявка еще ждет проверки, False - заявка нет.
     """
     data_requests = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'request_choice_state',
+                                           'request_choice_country',
                                            ['telegram_id'])
 
     for request in data_requests:
@@ -53,7 +52,7 @@ async def check_request_choice_state(number_match_db: str, user_id: int) -> bool
     return False
 
 
-async def check_choice_state_in_match_db(number_match_db: str, user_id: int) -> dict | None:
+async def check_choice_country_in_match_db(number_match_db: str, user_id: int) -> dict | None:
     """
     checking the user in the list of countries. Perhaps his application has already been checked and approved.
     \nПроверка пользователя в списке государств. возможно его заявка уже прошла проверку и ее одобрили.
@@ -64,42 +63,42 @@ async def check_choice_state_in_match_db(number_match_db: str, user_id: int) -> 
     :param user_id: message.from_user.id
     :return: dict - заявка прошла проверку и ее одобрили, None - заявка прошла проверку и ее отклонили.
     """
-    data_state = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'states',
+    data_country = SQLite.select_table(f'database/{number_match_db}.db',
+                                           'countries',
                                            ['name', 'telegram_id'])
 
-    for state in data_state:
-        if state['telegram_id'] == user_id:
-            return {'telegram_id': state['telegram_id'], 'name_state': state['name']}
+    for country in data_country:
+        if country['telegram_id'] == user_id:
+            return {'telegram_id': country['telegram_id'], 'name_country': country['name']}
 
     return None
 
 
-async def save_request_choice_state(user_id: int, number_match: str, name_state: str, unique_word: str, admin_decision_message_id: int):
+async def save_request_choice_country(user_id: int, number_match: str, name_country: str, unique_word: str, admin_decision_message_id: int):
     """
     Сохраняет заявку пользователя на выбор государства в базу данных.
 
     :param admin_decision_message_id:
     :param user_id: Telegram ID пользователя callback.from_user.id
     :param number_match: Номер матча
-    :param name_state: Название выбранного государства
+    :param name_country: Название выбранного государства
     :param unique_word: Кодовое слово
     """
     try:
         # Check for None
-        if user_id is None or number_match is None or name_state is None or unique_word is None or admin_decision_message_id is None:
+        if user_id is None or number_match is None or name_country is None or unique_word is None or admin_decision_message_id is None:
             raise ValueError("One or more parameters are missing! Missing required parameters.")
 
         # Checking Type Conformance
         assert isinstance(user_id, int), "user_id должен быть целым числом"
         assert isinstance(number_match, str) and number_match.isdigit(), "number_match должен быть числом в виде строки"
-        assert isinstance(name_state, str), "name_state должен быть строкой"
+        assert isinstance(name_country, str), "name_country должен быть строкой"
         assert isinstance(unique_word, str), "unique_word должен быть строкой"
         assert isinstance(admin_decision_message_id, int), "admin_decision_message_id должен быть int"
 
         # Preparing data for insertion
-        column_names = ['telegram_id', 'number_match', 'name_state', 'unique_word', 'admin_decision_message_id']
-        values = (user_id, int(number_match), name_state, unique_word, admin_decision_message_id)
+        column_names = ['telegram_id', 'number_match', 'name_country', 'unique_word', 'admin_decision_message_id']
+        values = (user_id, int(number_match), name_country, unique_word, admin_decision_message_id)
 
         # Checking data length
         if len(column_names) != len(values):
@@ -107,12 +106,12 @@ async def save_request_choice_state(user_id: int, number_match: str, name_state:
 
         # Inserting data into the database
         SQLite.insert_table(f'database/{number_match}.db',
-                            'request_choice_state',
+                            'request_choice_country',
                             column_names,
                             values
         )
     except ValueError as error:
-        print(f'Error "app/DatabaseWork/match/save_request_choice_state": {error}')
+        print(f'Error "app/DatabaseWork/match/save_request_choice_country": {error}')
 
 
 async def get_data_user_for_request(unique_word: str, number_match: str) -> dict:
@@ -121,46 +120,45 @@ async def get_data_user_for_request(unique_word: str, number_match: str) -> dict
 
     :param unique_word: кодовое слово
     :param number_match: номер матча
-    :return: данные заявки {'telegram_id': user['telegram_id'], 'name_state': user['name_state'], 'number_match': number_match}
+    :return: данные заявки {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match}
     """
 
     data_users = SQLite.select_table(f'database/{number_match}.db',
-                                    'request_choice_state',
-                                    ['telegram_id', 'name_state', 'unique_word', 'admin_decision_message_id'])
+                                    'request_choice_country',
+                                    ['telegram_id', 'name_country', 'unique_word', 'admin_decision_message_id'])
 
     for user in data_users:
         if user['unique_word'] == unique_word:
-            return {'telegram_id': user['telegram_id'], 'name_state': user['name_state'], 'number_match': number_match, 'unique_word': user['unique_word'], 'admin_decision_message_id': user['admin_decision_message_id']}
+            return {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match, 'unique_word': user['unique_word'], 'admin_decision_message_id': user['admin_decision_message_id']}
 
 
-async def deleted_request_state_in_match(data_user: dict):
+async def deleted_request_country_in_match(data_user: dict):
     """
     Удаляет заявку на подтверждения государства в конкретном матче
 
     :param data_user:
-    :return:
     """
     try:
         with sqlite3.connect(f'database/{data_user['number_match']}.db') as db:
-            db.execute("DELETE FROM request_choice_state WHERE unique_word = ?", (data_user['unique_word'],))
+            db.execute("DELETE FROM request_choice_country WHERE unique_word = ?", (data_user['unique_word'],))
             db.commit()
             return True
     except sqlite3.Error as e:
-        print(f"Ошибка при удалении заявки на подтверждения государства: {data_user['name_state']}: {e}")
+        print(f"Ошибка при удалении заявки на подтверждения государства: {data_user['name_country']}: {e}")
         return False
 
 
-async def register_state_in_match(data_user: dict):
+async def register_country_in_match(data_user: dict):
     """
     Регистрирует пользователя в конкретном матче на конкретное государство. Совершать только после подтверждения админа.
 
-    :param data_user: {'telegram_id': user['telegram_id'], 'name_state': user['name_state'], 'number_match': number_match}
+    :param data_user: {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match}
     """
-    # change telegram id of the appropriate state
+    # change telegram id of the appropriate country
     SQLite.update_table(f'database/{data_user['number_match']}.db',
-                        'states',
+                        'countries',
                         {'telegram_id': data_user['telegram_id']},
-                        {'name': data_user['name_state']})
+                        {'name': data_user['name_country']})
 
-    await deleted_request_state_in_match(data_user)
+    await deleted_request_country_in_match(data_user)
 

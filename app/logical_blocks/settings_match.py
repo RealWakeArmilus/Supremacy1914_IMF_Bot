@@ -1,65 +1,55 @@
-from aiogram import F
-from aiogram.types import CallbackQuery, ReplyKeyboardRemove
+from aiogram import F, Router
+from aiogram.types import CallbackQuery
 
-# Импортируйте модули, которые используются внутри функций
+# Import required modules
 import app.DatabaseWork.master as master_db
 import app.keyboards.settings_match as kb
-
-from aiogram import Router
+from app.utils import callback_utils
 
 router = Router()
 
 
 @router.callback_query(F.data == 'settings_match')
-async def start_settings_match(callback : CallbackQuery):
+async def start_settings_match(callback: CallbackQuery):
+    """Handle settings match callback."""
+    await callback_utils.notify_user(callback, 'Вы перешли в настройки матча.')
 
-    # transition notification create match
-    await callback.answer(
-        'Вы перешли в настройки карты.',
-        reply_markup=ReplyKeyboardRemove())
-
-    if await kb.numbers_match():
-
-        # message from callback to bot admin and delete previous bot message
-        await callback.message.edit_text(
-            'Выберите номер карты, которую желаете настроить',
-            reply_markup=await kb.numbers_match('SettingMatch'),
-            parse_mode="html")
-
+    match_numbers = await kb.numbers_match()
+    if match_numbers:
+        await callback_utils.send_edit_message(
+            callback,
+            'Выберите номер матча, который желаете настроить',
+            await kb.numbers_match('SettingMatch')
+        )
     else:
-
-        await callback.message.edit_text(
-            'На текущий момент список матчей пуст.',
-            parse_mode="html")
-
+        await callback_utils.send_edit_message(callback, 'На текущий момент список матчей пуст.')
 
 @router.callback_query(lambda c: c.data and c.data.startswith('SettingMatch_'))
 async def choice_number_match_for_settings(callback: CallbackQuery):
+    """Handle choice of match for settings."""
+    number_match = callback_utils.get_number_match_from_callback_data(callback.data, 'SettingMatch')
 
-    number_match = callback.data.split('_')[1]
+    await callback_utils.notify_user(callback, f"Вы выбрали матч с номером: {number_match}")
 
-    await callback.answer(f"Вы выбрали матч с номером: {number_match}")
-
-    await callback.message.edit_text(f"Что желаете сделать с матчем: {number_match}",
-                                     reply_markup=await kb.edit_match(number_match),
-                                     parse_mode="html")
-
+    await callback_utils.send_edit_message(
+        callback,
+        f"Что желаете сделать с матчем: {number_match}",
+        await kb.edit_match(number_match)
+    )
 
 @router.callback_query(lambda c: c.data and c.data.startswith('DeleteMatch_'))
 async def deleted_match(callback: CallbackQuery):
-
-    number_match = callback.data.split('_')[1]
+    """Handle deletion of a match."""
+    number_match = callback_utils.get_number_match_from_callback_data(callback.data, 'DeleteMatch')
 
     success = await master_db.deleted_match(number_match)
+    response = (
+        f"Номер матча {number_match} был успешно удалён."
+        if success else
+        f"Не удалось удалить номер матча {number_match}. Попробуйте позже."
+    )
 
-    if success:
+    await callback_utils.notify_user(callback, response)
 
-        response = f"Номер карты {number_match} был успешно удалён."
-
-    else:
-
-        response = f"Не удалось удалить номер карты {number_match}. Попробуйте позже."
-
-    await callback.answer(response)
-
+    # Restart the settings menu
     await start_settings_match(callback)

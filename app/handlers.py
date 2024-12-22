@@ -64,7 +64,7 @@ async def cmd_start(message: Message, state: FSMContext):
             sent_message = await message.answer_photo(
                 photo,
                 'Выберите <b>Номер матча</b> из списка ниже.'
-                '\n<pre>Узнать номер карты можно в игре supremacy1914, как указано на скрине.</pre>',
+                '\n<pre>Узнать номер матча можно в игре supremacy1914, как указано на скрине.</pre>',
                 reply_markup=await kb_settings_match.numbers_match('ChoiceMatchForUser'),
                 parse_mode='html')
 

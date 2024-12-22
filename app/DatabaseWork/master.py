@@ -1,20 +1,19 @@
 import os
-from asyncio.log import logger
 import sqlite3
 
 from SPyderSQL import SQLite, TypesSQLite
-from app.DatabaseWork.match import extraction_names_states
+from app.DatabaseWork.match import extraction_names_countries
 
 
 name_master_db = 'database/master.db'
 
 
-async def created_match(number_match: int, type_map: str):
+async def created_match(number_match: int, type_match: str):
     """
     Created new match from table match
 
     :param number_match: number match
-    :param type_map: type map match
+    :param type_match: type map match
     :return:
     """
     SQLite.create_table(name_master_db,
@@ -24,38 +23,38 @@ async def created_match(number_match: int, type_map: str):
 
     SQLite.insert_table(name_master_db,
                         'match',
-                        ['number', 'type_map'],
-                        (number_match, type_map))
+                        ['number', 'type'],
+                        (number_match, type_match))
 
     SQLite.create_table(f'database/{number_match}.db',
-                        'states',
+                        'countries',
                         {'name': TypesSQLite.text.value, 'telegram_id': TypesSQLite.integer.value, 'admin': TypesSQLite.blob.value},
                         True)
 
     SQLite.create_table(f'database/{number_match}.db',
-                        'request_choice_state',
-                        {'telegram_id': TypesSQLite.integer.value, 'number_match': TypesSQLite.integer.value, 'name_state': TypesSQLite.text.value, 'unique_word': TypesSQLite.text.value, 'admin_decision_message_id': TypesSQLite.integer.value},
+                        'request_choice_country',
+                        {'telegram_id': TypesSQLite.integer.value, 'number_match': TypesSQLite.integer.value, 'name_country': TypesSQLite.text.value, 'unique_word': TypesSQLite.text.value, 'admin_decision_message_id': TypesSQLite.integer.value},
                         True)
 
-    data_name_states = await extraction_names_states(type_map)
+    data_name_countries = await extraction_names_countries(type_match)
 
-    for name_state in data_name_states:
+    for name_country in data_name_countries:
         SQLite.insert_table(f'database/{number_match}.db',
-                            'states',
+                            'countries',
                             ['name', "admin"],
-                            (name_state, False))
+                            (name_country, False))
 
 
 async def check_number_match_exists(number: int) -> bool:
     """
     Проверяет номер матча на существование в базе данных
 
-    :param number: number_map
+    :param number: number_match
     :return:
     """
     SQLite.create_table(name_master_db,
                         'match',
-                        {'number': TypesSQLite.integer.value, 'type_map': TypesSQLite.text.value},
+                        {'number': TypesSQLite.integer.value, 'type': TypesSQLite.text.value},
                         True)
 
     number_matches = SQLite.select_table(name_master_db,
@@ -110,7 +109,7 @@ async def deleted_match(number_match: str):
 
         return True
     except (sqlite3.Error, Exception) as e:
-        print(f"Ошибка при удалении номера карты {number_match} из таблицы match: {e}")
+        print(f"Ошибка при удалении номера матча {number_match} из таблицы match: {e}")
         return False
 
 

@@ -11,7 +11,7 @@ class SingUp(StatesGroup):
 
 class CreatedMatch(StatesGroup):
     number = State()
-    type_map = State()
+    type = State()
 
 
 # Определите состояния для хранения message_id
