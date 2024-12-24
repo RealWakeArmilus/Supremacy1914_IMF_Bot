@@ -32,7 +32,7 @@ async def get_free_countries_from_match_for_user(number_match_db: str) -> list:
     return countries_from_match
 
 
-async def check_request_choice_country(number_match_db: str, user_id: int) -> bool:
+async def check_country_choice_requests(number_match_db: str, user_id: int) -> bool:
     """
     Is there a player's application in the database?
     \nЕсть ли заявка от игрока в базе данных?
@@ -42,7 +42,7 @@ async def check_request_choice_country(number_match_db: str, user_id: int) -> bo
     :return: True - заявка еще ждет проверки, False - заявка нет.
     """
     data_requests = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'request_choice_country',
+                                           'country_choice_requests',
                                            ['telegram_id'])
 
     for request in data_requests:
@@ -74,7 +74,7 @@ async def check_choice_country_in_match_db(number_match_db: str, user_id: int) -
     return None
 
 
-async def save_request_choice_country(user_id: int, number_match: str, name_country: str, unique_word: str, admin_decision_message_id: int):
+async def save_country_choice_requests(user_id: int, number_match: str, name_country: str, unique_word: str, admin_decision_message_id: int):
     """
     Сохраняет заявку пользователя на выбор государства в базу данных.
 
@@ -106,15 +106,15 @@ async def save_request_choice_country(user_id: int, number_match: str, name_coun
 
         # Inserting data into the database
         SQLite.insert_table(f'database/{number_match}.db',
-                            'request_choice_country',
+                            'country_choice_requests',
                             column_names,
                             values
         )
     except ValueError as error:
-        print(f'Error "app/DatabaseWork/match/save_request_choice_country": {error}')
+        print(f'Error "app/DatabaseWork/match/save_country_choice_requests": {error}')
 
 
-async def get_data_user_for_request(unique_word: str, number_match: str) -> dict:
+async def get_data_country_choice_requests(unique_word: str, number_match: str) -> dict:
     """
     Возвращает все базовые данные заявки определённого матча, на регистрацию пользователя конкретного государства
 
@@ -124,7 +124,7 @@ async def get_data_user_for_request(unique_word: str, number_match: str) -> dict
     """
 
     data_users = SQLite.select_table(f'database/{number_match}.db',
-                                    'request_choice_country',
+                                    'country_choice_requests',
                                     ['telegram_id', 'name_country', 'unique_word', 'admin_decision_message_id'])
 
     for user in data_users:
@@ -140,7 +140,7 @@ async def deleted_request_country_in_match(data_user: dict):
     """
     try:
         with sqlite3.connect(f'database/{data_user['number_match']}.db') as db:
-            db.execute("DELETE FROM request_choice_country WHERE unique_word = ?", (data_user['unique_word'],))
+            db.execute("DELETE FROM country_choice_requests WHERE unique_word = ?", (data_user['unique_word'],))
             db.commit()
             return True
     except sqlite3.Error as e:
@@ -161,4 +161,76 @@ async def register_country_in_match(data_user: dict):
                         {'name': data_user['name_country']})
 
     await deleted_request_country_in_match(data_user)
+
+
+async def get_data_country(user_id: int, number_match: str) -> dict | None:
+    """
+    Возвращает данные по государству
+
+    :param user_id: message.from_user.id | callback.from_user.id
+    :param number_match: number match
+    :return: dict
+    """
+    try:
+        data_countries = SQLite.select_table(f'database/{number_match}.db',
+                                        'countries',
+                                        ['id', 'telegram_id', 'name', 'admin'])
+    except Exception as error:
+        print(f"Ошибка при получении данных о странах: {error}. № Матч {number_match}.")
+        return None
+
+    characteristics_country : dict | None = None
+
+    for data_country in data_countries:
+        if data_country['telegram_id'] == user_id:
+            characteristics_country = {
+                'country_id': data_country['id'],
+                'name_country': data_country['name'],
+                'status': {'admin': data_country['admin']},
+                'currency': []
+            }
+            break
+
+    if not characteristics_country:
+        print(f"Данные о стране не найдены для пользователя {user_id}. № Матч {number_match}.")
+        return None
+
+    return characteristics_country
+
+
+async def get_data_currency(data_country: dict, number_match: str) -> dict | None:
+    """
+    Возвращает данные по валюте государства
+    
+    :param data_country: match_db.get_data_country()
+    :param number_match: number match
+    :return: 
+    """
+    try:
+        data_currencies = SQLite.select_table(f'database/{number_match}.db',
+                                            'currency',
+                                            ['country_id', 'name', 'tick', 'emission', 'capitalization'])
+    except Exception as error:
+        print(f"Ошибка при получении данных о валюте: {error}. № Матч {number_match}.")
+        return None
+
+    currency_info : dict | False = False
+
+    for data_currency in data_currencies:
+        if data_currency['country_id'] == data_country['country_id']:
+            currency_info = {
+                'name': data_currency['name'],
+                'tick': data_currency['tick'],
+                'emission': data_currency['emission'],
+                'capitalization': data_currency['capitalization']
+            }
+            break
+
+    if not currency_info:
+        # print(f"Данные о валюте не найдены для государства {data_country['name_country']}. № Матч {number_match}.")
+        data_country['currency'].append(False)
+    elif currency_info:
+        data_country['currency'].append(currency_info)
+
+    return data_country
 

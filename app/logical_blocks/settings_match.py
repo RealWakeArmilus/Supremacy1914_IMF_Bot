@@ -24,6 +24,7 @@ async def start_settings_match(callback: CallbackQuery):
     else:
         await callback_utils.send_edit_message(callback, 'На текущий момент список матчей пуст.')
 
+
 @router.callback_query(lambda c: c.data and c.data.startswith('SettingMatch_'))
 async def choice_number_match_for_settings(callback: CallbackQuery):
     """Handle choice of match for settings."""
@@ -36,6 +37,7 @@ async def choice_number_match_for_settings(callback: CallbackQuery):
         f"Что желаете сделать с матчем: {number_match}",
         await kb.edit_match(number_match)
     )
+
 
 @router.callback_query(lambda c: c.data and c.data.startswith('DeleteMatch_'))
 async def deleted_match(callback: CallbackQuery):

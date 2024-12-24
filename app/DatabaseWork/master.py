@@ -2,7 +2,7 @@ import os
 import sqlite3
 
 from SPyderSQL import SQLite, TypesSQLite
-from app.DatabaseWork.match import extraction_names_countries
+import app.DatabaseWork.match as match_db
 
 
 name_master_db = 'database/master.db'
@@ -10,11 +10,11 @@ name_master_db = 'database/master.db'
 
 async def created_match(number_match: int, type_match: str):
     """
-    Created new match from table match
+    creates all the necessary environment for the match
+    /nСоздает всю необходимую среду для матча
 
     :param number_match: number match
     :param type_match: type map match
-    :return:
     """
     SQLite.create_table(name_master_db,
                         'match',
@@ -32,17 +32,27 @@ async def created_match(number_match: int, type_match: str):
                         True)
 
     SQLite.create_table(f'database/{number_match}.db',
-                        'request_choice_country',
+                        'country_choice_requests',
                         {'telegram_id': TypesSQLite.integer.value, 'number_match': TypesSQLite.integer.value, 'name_country': TypesSQLite.text.value, 'unique_word': TypesSQLite.text.value, 'admin_decision_message_id': TypesSQLite.integer.value},
                         True)
 
-    data_name_countries = await extraction_names_countries(type_match)
+    data_name_countries = await match_db.extraction_names_countries(type_match)
 
     for name_country in data_name_countries:
         SQLite.insert_table(f'database/{number_match}.db',
                             'countries',
                             ['name', "admin"],
                             (name_country, False))
+
+    SQLite.create_table(f'database/{number_match}.db',
+                        'currency',
+                        {'country_id': TypesSQLite.integer.value, 'name': TypesSQLite.text.value, 'tick': TypesSQLite.text.value, 'emission': TypesSQLite.integer.value, 'capitalization': TypesSQLite.integer.value},
+                        True)
+
+    SQLite.create_table(f'database/{number_match}.db',
+                        'currency_emission_requests',
+                        {'telegram_id': TypesSQLite.integer.value, 'number_match': TypesSQLite.integer.value, 'name_country': TypesSQLite.text.value, 'unique_word': TypesSQLite.text.value, 'admin_decision_message_id': TypesSQLite.integer.value},
+                        True)
 
 
 async def check_number_match_exists(number: int) -> bool:
@@ -122,10 +132,15 @@ async def created_table_user():
                         {'telegram_id': TypesSQLite.integer.value, 'admin': TypesSQLite.integer.value},
                         True)
 
-    # SQLite.insert_table(name_master_db,
-    #                     'users',
-    #                     ['telegram_id', 'admin'],
-    #                     (5311154389, True))
+
+async def set_telegram_id_admin():
+    """
+    Загружает в базу данных master и таблицу users данные главного админа бота
+    """
+    SQLite.insert_table(name_master_db,
+                        'users',
+                        ['telegram_id', 'admin'],
+                        (5311154389, True))
 
 
 async def get_telegram_id_admin() -> int:

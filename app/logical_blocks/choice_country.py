@@ -16,19 +16,18 @@ router = Router()
 # import routers from logical_blocks
 from app.logical_blocks.verify_country import router as verify_state_router
 from app.logical_blocks.country_menu import router as country_menu_router
+from app.logical_blocks.country_menu import start_country_menu
 
 # connect routers from logical_blocks
 router.include_router(verify_state_router)
 router.include_router(country_menu_router)
 
-from app.logical_blocks.country_menu import start_country_menu
+
+CHOICE_MATCH_FOR_USER = 'ChoiceMatchForUser'
+CHOICE_COUNTRY_FROM_MATCH = 'ChoiceCountryFromMatch'
 
 
-CHOICE_MATCH_FOR_USER = 'ChoiceMatchForUser_'
-CHOICE_COUNTRY_FROM_MATCH = 'ChoiceCountryFromMatch_'
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(CHOICE_MATCH_FOR_USER))
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{CHOICE_MATCH_FOR_USER}_'))
 async def start_choice_number_match_for_game_user(callback: CallbackQuery, state: FSMContext):
     """
     choice number match for game user
@@ -37,47 +36,45 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
     :param state: FSMContext
     """
     try:
-        number_match = callback_utils.parse_callback_data(callback.data, 'ChoiceMatchForUser')[0]
+        number_match = callback_utils.parse_callback_data(callback.data, CHOICE_MATCH_FOR_USER)[0]
         await callback_utils.notify_user(callback, f"Вы выбрали матч с номером: {number_match}")
         await delete_message_photo(callback, state)
 
-        request_country = await match_db.check_request_choice_country(number_match, callback.from_user.id)
+        request_country = await match_db.check_country_choice_requests(number_match, callback.from_user.id)
 
         if request_country is False:
             data_country = await match_db.check_choice_country_in_match_db(number_match, callback.from_user.id)
 
             if data_country:
-                await callback_utils.send_message(callback, f'<b>Вы играете за:</b> {data_country['name_country']}')
-                await start_country_menu(callback)
+                await start_country_menu(callback, number_match)
 
             elif data_country is None:
-                free_countries = await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}{number_match}', number_match)
+                free_countries = await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}', number_match)
 
                 if free_countries:
                     await callback_utils.send_message(callback,f'Выберите государство за которое играете, на карте: {number_match}.'
                                                   '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
-                                                      await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}{number_match}', number_match))
+                                                      await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}', number_match))
 
                 elif free_countries is None:
                     await callback_utils.send_message(callback,'К сожалению в данном матче свободных государств нет.')
 
                 else:
-                    await callback_utils.send_message(callback,'Что-то пошло не так "logical_blocks/choice_state/84"')
+                    raise Exception('При обработке списка свободных государств произошла неизвестная ошибка')
 
             else:
-                await callback_utils.send_message(callback,'Что-то пошло не так "logical_blocks/choice_state/88"')
+                raise Exception('При обработке данных из списка государств произошла неизвестная ошибка')
 
         elif request_country:
             await callback_utils.send_message(callback,'<b>Ваша заявка еще ожидает проверку.</b> '
                                           '\nСледуйте инструкции, которая была выпущена после выбора государства.')
-
         else:
-            await callback_utils.send_message(callback, 'Что-то пошло не так "logical_blocks/choice_state/99"')
+            raise Exception('При обработке заявок на регистрацию государства в матч произошла неизвестная ошибка')
     except Exception as error:
-        await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор матча.")
+        await callback_utils.handle_error(callback, error, "Не удалось обработать вход в матч.")
 
 
-@router.callback_query(lambda c: c.data and c.data.startswith(CHOICE_COUNTRY_FROM_MATCH))
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{CHOICE_COUNTRY_FROM_MATCH}_'))
 async def choice_country_from_number_match_for_user(callback: CallbackQuery):
     """
     Пользователь выбирает государство для представления в матче.
@@ -85,7 +82,7 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
     :param callback: CallbackQuery
     """
     try:
-        data_parts = callback_utils.parse_callback_data(callback.data, 'ChoiceCountryFromMatch')
+        data_parts = callback_utils.parse_callback_data(callback.data, CHOICE_COUNTRY_FROM_MATCH)
         number_match, name_country = data_parts[0], data_parts[1]
 
         await callback_utils.notify_user(callback, f"Вы выбрали государство: {name_country}")
@@ -125,7 +122,7 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
         )
 
         # save chat_id user and data request choice state
-        await match_db.save_request_choice_country(callback.from_user.id, number_match, name_country, unique_word, admin_decision_message.message_id)
+        await match_db.save_country_choice_requests(callback.from_user.id, number_match, name_country, unique_word, admin_decision_message.message_id)
 
     except Exception as error:
         await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор государства.")

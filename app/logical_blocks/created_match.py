@@ -131,6 +131,7 @@ async def confirm_match_creation(callback: CallbackQuery, state: FSMContext):
         )
         logger.error(f"Error <Created_match/confirm_match_creation>: {error}")
 
+
 @router.callback_query(F.data == "restart_creation")
 async def restart_match_creation(callback: CallbackQuery, state: FSMContext):
     """
