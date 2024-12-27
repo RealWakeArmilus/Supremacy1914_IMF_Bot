@@ -24,13 +24,13 @@ async def start_created_match(callback: CallbackQuery, state: FSMContext):
     """
     await callback_utils.notify_user(callback, 'Вы перешли в создание матча.')
 
-    await state.set_state(SG.CreatedMatch.number)
+    await state.set_state(SG.FormCreatedMatch.number)
 
     await callback_utils.send_edit_message(callback,
-        'Введите пожалуйста <b>номер матча</b>, которой хотите создать:'
+        '<b>Введите номер матча, который хотите создать</b>:'
     )
 
-@router.message(SG.CreatedMatch.number)
+@router.message(SG.FormCreatedMatch.number)
 async def choice_type_match(message: Message, state: FSMContext):
     """
     Handles the map number input, validates it, and moves to the next step if valid.
@@ -57,7 +57,7 @@ async def choice_type_match(message: Message, state: FSMContext):
 
         # Save valid map number and proceed to the next state
         await state.update_data(number=number_match)
-        await state.set_state(SG.CreatedMatch.type)
+        await state.set_state(SG.FormCreatedMatch.type)
 
         await message.answer(
             'Выберите <b>тип матча</b>:',
@@ -78,7 +78,7 @@ async def choice_type_match(message: Message, state: FSMContext):
         logger.error(f"Error <Created_match/choice_type_match>: {error}")
 
 
-@router.message(lambda message: message.text in ['Великая война'], SG.CreatedMatch.type)
+@router.message(lambda message: message.text in ['Великая война'], SG.FormCreatedMatch.type)
 async def set_type_match(message: Message, state: FSMContext):
     """
     Saves the chosen map type and provides a summary to the user.

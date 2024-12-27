@@ -6,7 +6,8 @@ async def now_country_menu(number_match: str, status_emission: bool = False) -> 
 
     builder = InlineKeyboardBuilder()
 
-    builder.add(InlineKeyboardButton(text=str('Эмиссия национальной валюты'), callback_data=f'EmissionNationalCurrency_{number_match}'))
+    if status_emission is False:
+        builder.add(InlineKeyboardButton(text=str('Эмиссия национальной валюты'), callback_data=f'EmissionNationalCurrency_{number_match}'))
     builder.add(InlineKeyboardButton(text=str('Торговля'), callback_data=f'Trading_{number_match}'))
     builder.add(InlineKeyboardButton(text=str('Список лимитных заявок'), callback_data=f'ListLimitedOrders_{number_match}'))
 

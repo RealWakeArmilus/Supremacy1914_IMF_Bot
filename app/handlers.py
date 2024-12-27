@@ -69,7 +69,7 @@ async def cmd_start(message: Message, state: FSMContext):
                 parse_mode='html')
 
             # Сохранение message_id фотографии в состоянии пользователя
-            await state.set_state(SG.Form.photo_message_id.state)
+            await state.set_state(SG.SavePhotoMessageID.photo_message_id.state)
             await state.update_data(photo_message_id=sent_message.message_id)
 
         else:

@@ -91,7 +91,7 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
         unique_word = generate_custom_random_unique_word()
 
         instructions = (
-            f"Следуйте этим инструкциям для подтверждения вашей заявки:\n"
+            f"<b>Следуйте этой инструкции, для подтверждения вашей заявки:</b>\n"
             f"<pre>"
             f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
             f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"

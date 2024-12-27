@@ -47,11 +47,10 @@ async def free_countries_match(input_match_hash: str, number_match_db: str) -> I
 
 async def country_verify_by_admin(unique_word: str, number_match: str) -> InlineKeyboardMarkup | None:
     """
-    Create keyboards from verify state by admin
+    Create keyboards from verify country by admin
 
     :param number_match:
     :param unique_word:
-    :return:
     """
     builder = InlineKeyboardBuilder()
 

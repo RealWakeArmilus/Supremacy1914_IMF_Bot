@@ -9,7 +9,14 @@ import app.keyboards.country_menu as kb
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
+# Router setup
 router = Router()
+
+# import routers from logical_blocks
+from app.logical_blocks.emission_national_currency import router as emission_national_currency_router
+
+# connect routers from logical_blocks
+router.include_router(emission_national_currency_router)
 
 
 COUNTRY_MENU = "CountryMenu"
@@ -59,7 +66,7 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
 
             await callback_utils.send_message(callback,
                                               characteristics,
-                                              await kb.now_country_menu(number_match, ))
+                                              await kb.now_country_menu(number_match, characteristics_country['currency'][0]))
 
         elif characteristics_country is None:
             raise Exception(f'Данные пользователя по матчу {number_match} не найдены.')
@@ -75,7 +82,7 @@ async def emission_national_currency(callback: CallbackQuery):
     number_match = callback_utils.parse_callback_data(callback.data, EMISSION_NATIONAL_CURRENCY)[0]
     message_id = callback.message.message_id
 
-    await callback_utils.notify_user(callback, 'Вы выбрали эмиссию национальной валюты')
+    await callback_utils.notify_user(callback, 'Вы выбрали раздел "эмиссия национальной валюты"')
 
     if not number_match:
         await callback_utils.handle_error(callback, ValueError("Отсутствует номер матча."), 'Некорректные данные.')
@@ -104,9 +111,10 @@ async def emission_national_currency(callback: CallbackQuery):
                                                '<pre>'
                                                '1. Название вашей валюты\n\n'
                                                '2. Тикер: трехзначное сокращенное название вашей валюты, для более быстрого и понятного поиска.\n\n'
-                                               '3. Монетарная политика: когда вы устанавливаете политику и регулируете количество выпущенных денег, таким образом, инфляцию и поддерживая стабильность новой валюты.\n\n'
-                                               '4. Распространение: вы должны осуществляться торговлю, частью вашего капитала нац. валюты, чтобы дать другим государствам инвестировать в вашу экономику имея вашу валюту как инвестиционный инструмент. \n\nТакой прием работает в обе стороны, вы тоже можете покупать валюты других стран, для спекуляций или инвестирования в чужую экономику.\n\n'
-                                               '5. Обеспечение Доверия: чем стабильнее ваша политика с соседним государствами, чем больше ресурсов, серебра и валют других стран вы имеете, тем привлекательнее становиться ваша экономика и ваша валюта для других государств. \n\nВам необходимо заключать все больше экономических и дипломатических соглашений между разными участниками экономической системы и вне ее.'
+                                               '3. Капитализация: это общий объем обращающейся вашей валюты в международных резервах и на валютных рынках. Это количество позволяет оценить ликвидность и значимость валюты в мировом экономическом масштабе.\n\n'
+                                               '4. Монетарная политика: когда вы устанавливаете политику и регулируете количество выпущенных денег, таким образом, инфляцию и поддерживая стабильность новой валюты.\n\n'
+                                               '5. Распространение: вы должны осуществляться торговлю, частью вашего капитала нац. валюты, чтобы дать другим государствам инвестировать в вашу экономику имея вашу валюту как инвестиционный инструмент. \n\nТакой прием работает в обе стороны, вы тоже можете покупать валюты других стран, для спекуляций или инвестирования в чужую экономику.\n\n'
+                                               '6. Обеспечение Доверия: чем стабильнее ваша политика с соседним государствами, чем больше ресурсов, серебра и валют других стран вы имеете, тем привлекательнее становиться ваша экономика и ваша валюта для других государств. \n\nВам необходимо заключать все больше экономических и дипломатических соглашений между разными участниками экономической системы и вне ее.'
                                                '</pre>',
                                                keyboard)
     except Exception as error:

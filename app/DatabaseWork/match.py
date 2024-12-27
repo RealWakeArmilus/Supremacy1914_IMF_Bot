@@ -114,7 +114,7 @@ async def save_country_choice_requests(user_id: int, number_match: str, name_cou
         print(f'Error "app/DatabaseWork/match/save_country_choice_requests": {error}')
 
 
-async def get_data_country_choice_requests(unique_word: str, number_match: str) -> dict:
+async def get_data_country_choice_request(unique_word: str, number_match: str) -> dict:
     """
     Возвращает все базовые данные заявки определённого матча, на регистрацию пользователя конкретного государства
 
@@ -169,7 +169,7 @@ async def get_data_country(user_id: int, number_match: str) -> dict | None:
 
     :param user_id: message.from_user.id | callback.from_user.id
     :param number_match: number match
-    :return: dict
+    :return: dict {country_id, name_country, status: {admin}, currency: [] }
     """
     try:
         data_countries = SQLite.select_table(f'database/{number_match}.db',
@@ -234,3 +234,89 @@ async def get_data_currency(data_country: dict, number_match: str) -> dict | Non
 
     return data_country
 
+
+async def check_name_currency_exists(number_match: str, name_currency: str):
+    """
+    Проверяет название валюты на существование в базе данных двойников
+
+    :param number_match: number match
+    :param name_currency: name currency
+    :return:
+    """
+    names_currency = SQLite.select_table(f'database/{number_match}.db',
+                                         'currency',
+                                         ['name'])
+
+    for name in names_currency:
+        if name['name'] == name_currency:
+            return True
+
+    return False
+
+
+async def check_tick_currency_exists(number_match: str, tick_currency: str):
+    """
+    Проверяет название валюты на существование в базе данных двойников
+
+    :param number_match: number match
+    :param tick_currency: tick currency
+    :return:
+    """
+    ticks_currency = SQLite.select_table(f'database/{number_match}.db',
+                                         'currency',
+                                         ['tick'])
+
+    for tick in ticks_currency:
+        if tick['tick'] == tick_currency:
+            return True
+
+    return False
+
+
+async def save_currency_emission_request(data_request: dict):
+    """
+    Сохраняет заявку государства на эмиссию валюты в базу данных.
+
+    :param data_request: {'photo_message_id': 1787, 'number_match': '9480505', 'telegram_id': 5311154389, 'country_id': 4, 'name_currency': 'Черпак', 'tick_currency': 'HPK', 'amount_emission_currency': 5000000000, 'capitalization': 50000, 'date_request_creation': '2024-12-27 02:46:32', 'status_confirmed': False, 'date_confirmed': ''}
+    """
+    try:
+        # Check for None
+        if (data_request['number_match'] is None or data_request['telegram_id'] is None
+            or data_request['country_id'] is None or data_request['name_currency'] is None or data_request['tick_currency'] is None
+            or data_request['amount_emission_currency'] is None or data_request['capitalization'] is None
+            or data_request['date_request_creation'] is None
+            or data_request['status_confirmed'] is None or data_request['date_confirmed'] is None):
+            raise ValueError("One or more parameters are missing! Missing required parameters.")
+
+        # Checking Type Conformance
+        assert isinstance(data_request['number_match'], str) and data_request['number_match'].isdigit(), "number_match должен быть числом в виде строки"
+        assert isinstance(data_request['country_id'], int), "country_id должен быть int"
+        assert isinstance(data_request['name_currency'], str), "name_currency должен быть строкой"
+        assert isinstance(data_request['tick_currency'], str), "tick_currency должен быть строкой"
+        assert isinstance(data_request['amount_emission_currency'], int), "amount_emission_currency должен быть int"
+        assert isinstance(data_request['capitalization'], int), "capitalization должен быть int"
+        assert isinstance(data_request['date_request_creation'], str), "date_request_creation должен быть строкой"
+        assert isinstance(data_request['status_confirmed'], bool), "status_confirmed должен быть bool"
+        assert isinstance(data_request['date_confirmed'], str), "date_confirmed должен быть строкой"
+
+
+        # Preparing data for insertion
+        column_names = ['number_match', 'country_id', 'name_currency', 'tick_currency',
+                        'amount_emission_currency', 'capitalization', 'date_request_creation',
+                        'status_confirmed', 'date_confirmed']
+        values = (int(data_request['number_match']), data_request['country_id'], data_request['name_currency'], data_request['tick_currency'],
+                  data_request['amount_emission_currency'], data_request['capitalization'], data_request['date_request_creation'],
+                  data_request['status_confirmed'], data_request['date_confirmed'])
+
+        # Checking data length
+        if len(column_names) != len(values):
+            raise ValueError(f"Mismatch between columns and values! Values: {values} for Columns: {column_names}")
+
+        # Inserting data into the database
+        SQLite.insert_table(f'database/{int(data_request['number_match'])}.db',
+                            'currency_emission_requests',
+                            column_names,
+                            values
+        )
+    except ValueError as error:
+        print(f'Error "app/DatabaseWork/match/save_currency_emission_requests": {error}')

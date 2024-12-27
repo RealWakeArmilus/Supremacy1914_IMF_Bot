@@ -20,7 +20,7 @@ async def confirm_request_country_by_admin(callback: CallbackQuery):
 
     try:
         # get data user who submitted the application
-        data_user = await match_db.get_data_country_choice_requests(unique_word, number_match)
+        data_user = await match_db.get_data_country_choice_request(unique_word, number_match)
 
         await match_db.register_country_in_match(data_user)
 
@@ -53,7 +53,7 @@ async def reject_request_country_by_admin_(callback: CallbackQuery):
 
     try:
         # get data user who submitted the request
-        data_user = await match_db.get_data_country_choice_requests(unique_word, number_match)
+        data_user = await match_db.get_data_country_choice_request(unique_word, number_match)
 
         # deleted request
         await match_db.deleted_request_country_in_match(data_user)
