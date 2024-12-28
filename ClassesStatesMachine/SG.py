@@ -14,12 +14,13 @@ class FormCreatedMatch(StatesGroup):
 
 class FormCurrencyEmissionRequest(StatesGroup):
     number_match = State()
-    telegram_id = State()
-    country_id = State()
+    data_country = State()
     name_currency = State()
     tick_currency = State()
-    amount_emission_currency = State()
+    following_resource = State()
+    course_following = State()
     capitalization = State()
+    amount_emission_currency = State()
     date_request_creation = State()
     status_confirmed = State()
     date_confirmed = State()

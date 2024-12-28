@@ -127,7 +127,8 @@ async def confirm_match_creation(callback: CallbackQuery, state: FSMContext):
     except Exception as error:
         await callback_utils.send_edit_message(
             callback,
-            '❌ <b>Произошла ошибка при создании среды для матча.</b> Попробуйте еще раз позже.'
+            f'❌ <b>Произошла ошибка при создании среды для матча:</b> {error}.\n'
+            f'Попробуйте позже.'
         )
         logger.error(f"Error <Created_match/confirm_match_creation>: {error}")
 

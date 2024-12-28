@@ -46,14 +46,19 @@ async def created_match(number_match: int, type_match: str):
 
     SQLite.create_table(f'database/{number_match}.db',
                         'currency',
-                        {'country_id': TypesSQLite.integer.value, 'name': TypesSQLite.text.value, 'tick': TypesSQLite.text.value, 'emission': TypesSQLite.integer.value, 'capitalization': TypesSQLite.integer.value},
+                        {'country_id': TypesSQLite.integer.value,
+                        'name': TypesSQLite.text.value, 'tick': TypesSQLite.text.value,
+                        'following_resource': TypesSQLite.text.value, 'course_following': TypesSQLite.real.value,
+                        'capitalization': TypesSQLite.integer.value, 'emission': TypesSQLite.real.value,
+                        'currency_index': TypesSQLite.real.value},
                         True)
 
     SQLite.create_table(f'database/{number_match}.db',
                         'currency_emission_requests',
                         {'number_match': TypesSQLite.integer.value, 'telegram_id': TypesSQLite.integer.value, 'country_id': TypesSQLite.integer.value,
                         'name_currency': TypesSQLite.text.value, 'tick_currency': TypesSQLite.text.value,
-                        'amount_emission_currency': TypesSQLite.integer.value, 'capitalization': TypesSQLite.integer.value,
+                        'following_resource': TypesSQLite.text.value, 'course_following': TypesSQLite.real.value,
+                        'capitalization': TypesSQLite.integer.value, 'amount_emission_currency': TypesSQLite.real.value,
                         'date_request_creation': TypesSQLite.text.value,
                         'status_confirmed': TypesSQLite.blob.value, 'date_confirmed': TypesSQLite.text.value},
                         True)

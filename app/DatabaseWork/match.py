@@ -185,6 +185,7 @@ async def get_data_country(user_id: int, number_match: str) -> dict | None:
         if data_country['telegram_id'] == user_id:
             characteristics_country = {
                 'country_id': data_country['id'],
+                'telegram_id': data_country['telegram_id'],
                 'name_country': data_country['name'],
                 'status': {'admin': data_country['admin']},
                 'currency': []
@@ -207,9 +208,16 @@ async def get_data_currency(data_country: dict, number_match: str) -> dict | Non
     :return: 
     """
     try:
+        columns = ['country_id',
+                   'name', 'tick',
+                   'following_resource', 'course_following',
+                   'capitalization', 'emission',
+                   'currency_index'
+                   ]
+
         data_currencies = SQLite.select_table(f'database/{number_match}.db',
                                             'currency',
-                                            ['country_id', 'name', 'tick', 'emission', 'capitalization'])
+                                            columns)
     except Exception as error:
         print(f"Ошибка при получении данных о валюте: {error}. № Матч {number_match}.")
         return None
@@ -221,8 +229,11 @@ async def get_data_currency(data_country: dict, number_match: str) -> dict | Non
             currency_info = {
                 'name': data_currency['name'],
                 'tick': data_currency['tick'],
+                'following_resource': data_currency['following_resource'],
+                'course_following': data_currency['data_currency'],
+                'capitalization': data_currency['capitalization'],
                 'emission': data_currency['emission'],
-                'capitalization': data_currency['capitalization']
+                'currency_index': data_currency['currency_index']
             }
             break
 
@@ -281,31 +292,41 @@ async def save_currency_emission_request(data_request: dict):
     """
     try:
         # Check for None
-        if (data_request['number_match'] is None or data_request['telegram_id'] is None
-            or data_request['country_id'] is None or data_request['name_currency'] is None or data_request['tick_currency'] is None
-            or data_request['amount_emission_currency'] is None or data_request['capitalization'] is None
+        if (data_request['number_match'] is None or data_request['data_country']['telegram_id'] is None or data_request['data_country']['country_id'] is None
+            or data_request['name_currency'] is None or data_request['tick_currency'] is None
+            or data_request['following_resource'] is None or data_request['course_following'] is None
+            or data_request['capitalization'] is None or data_request['amount_emission_currency'] is None
             or data_request['date_request_creation'] is None
             or data_request['status_confirmed'] is None or data_request['date_confirmed'] is None):
             raise ValueError("One or more parameters are missing! Missing required parameters.")
 
         # Checking Type Conformance
         assert isinstance(data_request['number_match'], str) and data_request['number_match'].isdigit(), "number_match должен быть числом в виде строки"
-        assert isinstance(data_request['country_id'], int), "country_id должен быть int"
+        assert isinstance(data_request['data_country']['telegram_id'], int), "telegram_id должен быть int"
+        assert isinstance(data_request['data_country']['country_id'], int), "country_id должен быть int"
         assert isinstance(data_request['name_currency'], str), "name_currency должен быть строкой"
         assert isinstance(data_request['tick_currency'], str), "tick_currency должен быть строкой"
-        assert isinstance(data_request['amount_emission_currency'], int), "amount_emission_currency должен быть int"
+        assert isinstance(data_request['following_resource'], str), "following_resource должен быть строкой"
+        assert isinstance(data_request['course_following'], float), "course_following должен быть float"
         assert isinstance(data_request['capitalization'], int), "capitalization должен быть int"
+        assert isinstance(data_request['amount_emission_currency'], float), "amount_emission_currency должен быть float"
         assert isinstance(data_request['date_request_creation'], str), "date_request_creation должен быть строкой"
         assert isinstance(data_request['status_confirmed'], bool), "status_confirmed должен быть bool"
         assert isinstance(data_request['date_confirmed'], str), "date_confirmed должен быть строкой"
 
 
         # Preparing data for insertion
-        column_names = ['number_match', 'country_id', 'name_currency', 'tick_currency',
-                        'amount_emission_currency', 'capitalization', 'date_request_creation',
+        column_names = ['number_match', 'telegram_id' ,'country_id',
+                        'name_currency', 'tick_currency',
+                        'following_resource', 'course_following',
+                        'capitalization', 'amount_emission_currency',
+                        'date_request_creation',
                         'status_confirmed', 'date_confirmed']
-        values = (int(data_request['number_match']), data_request['country_id'], data_request['name_currency'], data_request['tick_currency'],
-                  data_request['amount_emission_currency'], data_request['capitalization'], data_request['date_request_creation'],
+        values = (int(data_request['number_match']), data_request['data_country']['telegram_id'], data_request['data_country']['country_id'],
+                  data_request['name_currency'], data_request['tick_currency'],
+                  data_request['following_resource'], data_request['course_following'],
+                  data_request['capitalization'], data_request['amount_emission_currency'],
+                  data_request['date_request_creation'],
                   data_request['status_confirmed'], data_request['date_confirmed'])
 
         # Checking data length
