@@ -8,6 +8,7 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 
 # import keyboards
 import ClassesStatesMachine.SG as SG
+from ClassesStatesMachine.SG import update_state
 import app.DatabaseWork.master as master_db
 import app.DatabaseWork.match as match_db
 import app.keyboards.emission_national_currency as kb
@@ -20,21 +21,28 @@ logger = logging.getLogger(__name__)
 # Router setup
 router = Router()
 
+# Callback prefixes
+PREFIXES = {
+    "START": "StartEmissionNationalCurrency",
+    "FOLLOW_RESOURCE": "FollowingResourceNatCurrency",
+    "CONFIRM": "ConfirmFormEmissionNatCurrency",
+    "RESTART": "RestartFormEmissionNatCurrency",
+}
+# START_EMISSION_NATIONAL_CURRENCY = 'StartEmissionNationalCurrency'
+# AMOUNT_EMISSION_NAT_CURRENCY = 'AmountEmissionNatCurrency'
+# FOLLOWING_RESOURCE_NAT_CURRENCY = 'FollowingResourceNatCurrency'
+# RESTART_EMISSION_NAT_CURRENCY = 'RestartFormEmissionNatCurrency'
 
-START_EMISSION_NATIONAL_CURRENCY = 'StartEmissionNationalCurrency'
-AMOUNT_EMISSION_NAT_CURRENCY = 'AmountEmissionNatCurrency'
-FOLLOWING_RESOURCE_NAT_CURRENCY = 'FollowingResourceNatCurrency'
-RESTART_EMISSION_NAT_CURRENCY = 'RestartFormEmissionNatCurrency'
 
-
-@router.callback_query(lambda c: c.data and c.data.startswith(f'{START_EMISSION_NATIONAL_CURRENCY}_'))
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["START"]}_'))
 async def start_emission_national_currency(callback: CallbackQuery, state: FSMContext, number_match: str = None):
 
     try:
         if number_match is None:
             try:
-                parse_number_match = callback_utils.parse_callback_data(callback.data, START_EMISSION_NATIONAL_CURRENCY)[0]
-                number_match = parse_number_match
+                number_match = number_match or callback_utils.parse_callback_data(callback.data, PREFIXES["START"])[0]
+                # parse_number_match = callback_utils.parse_callback_data(callback.data, START_EMISSION_NATIONAL_CURRENCY)[0]
+                # number_match = parse_number_match
             except (IndexError, TypeError) as error:
                 await callback_utils.handle_error(callback, error, 'Ошибка при разборе запуска формы эмиссии нац. валюты. ')
                 return
@@ -42,16 +50,14 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
         await callback_utils.notify_user(callback, f'Заполнение бланка "эмиссии национальной валюты" для матча: {number_match}')
 
         await state.set_state(SG.FormCurrencyEmissionRequest.number_match)
-        await state.update_data(number_match=number_match)
-        logger.info(f"FSMContext обновлено: number_match={number_match}")
+        await update_state(state, number_match=number_match)
 
         data_country = await match_db.get_data_country(callback.from_user.id, number_match)
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
         await state.set_state(SG.FormCurrencyEmissionRequest.data_country)
-        await state.update_data(data_country=data_country)
-        logger.info(f"FSMContext обновлено: data_country={data_country}")
+        await update_state(state, data_country=data_country)
 
         await state.set_state(SG.FormCurrencyEmissionRequest.name_currency)
 
@@ -69,9 +75,7 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
             '<b>Придумайте и введите название вашей валюты:</b>'
         )
     except Exception as error:
-        logger.error(f"Error in start_emission_national_currency: {error}", exc_info=True)
-        await callback.answer("Произошла ошибка. Пожалуйста, повторите позже.", show_alert=True)
-
+        await callback_utils.handle_exception(callback, 'start_emission_national_currency', error)
 
 
 @router.message(SG.FormCurrencyEmissionRequest.name_currency)
@@ -79,16 +83,14 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
     """
     Проверка введенного имени валюты и ввод тикера валюты
     """
-    input_name_currency = message.text.strip()
-
     try:
-        if not input_name_currency.isalpha():
-            raise ValueError('Название валюты должно содержать только буквы.')
-        if not (3 <= len(input_name_currency) <= 8):
-            raise ValueError('Название валюты должно быть от 3 до 8 символов.')
+        input_name_currency = message.text.strip().lower()
+        if not input_name_currency.isalpha() or not (3 <= len(input_name_currency) <= 8):
+            raise ValueError('Название валюты должно быть от 3 до 8 символов и содержать только буквы.')
 
-        data_form_emission_currency_request = await state.get_data()
-        number_match = data_form_emission_currency_request['number_match']
+        data_currency_emission_request = await state.get_data()
+        number_match = data_currency_emission_request['number_match']
+
         if not number_match:
             raise KeyError("Ключ 'number_match' отсутствует в данных FSMContext.")
 
@@ -99,12 +101,11 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
             )
             return
 
-        await state.update_data(name_currency=input_name_currency)
-        logger.info(f"FSMContext обновлено: name_currency={input_name_currency}")
+        await update_state(state, name_currency=input_name_currency)
 
         await state.set_state(SG.FormCurrencyEmissionRequest.tick_currency)
 
-        data_country = data_form_emission_currency_request['data_country']
+        data_country = data_currency_emission_request['data_country']
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
@@ -121,13 +122,8 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
             '<b>Придумайте и введите тикер вашей валюты:</b>',
             parse_mode="html"
         )
-
     except Exception as error:
-        await message.answer(
-            f'❌ <b>Неверный формат названия валюты.</b> \n{error} Пожалуйста, придумайте другое.',
-            parse_mode="html"
-        )
-        logger.error(f"Ошибка в input_tick_for_emission_national_currency: {error}")
+        await callback_utils.handle_exception(message, 'input_tick_for_emission_national_currency', error, '❌ <b>Неверный формат названия валюты.</b>')
 
 
 @router.message(SG.FormCurrencyEmissionRequest.tick_currency)
@@ -135,13 +131,10 @@ async def input_following_resource_for_emission_national_currency(message: Messa
     """
     Проверка введенного тикера валюты и выбор ресурса за которым будет закреплена валюта
     """
-    input_tick_currency = message.text.strip().upper()
-
     try:
-        if not input_tick_currency.isalpha():
-            raise Exception('Тикер валюты должен содержать только буквы.')
-        if len(input_tick_currency) != 3:
-            raise Exception('Тикер валюты должен состоять ровно из 3-х символов.')
+        input_tick_currency = message.text.strip().upper()
+        if not input_tick_currency.isalpha() or (len(input_tick_currency) != 3):
+            raise Exception('Тикер валюты должен содержать ровно 3 буквы.')
 
         data_currency_emission_request = await state.get_data()
         data_country = data_currency_emission_request['data_country']
@@ -149,13 +142,12 @@ async def input_following_resource_for_emission_national_currency(message: Messa
 
         if await match_db.check_tick_currency_exists(number_match, input_tick_currency):
             await message.answer(
-                f'❌ <b>Название тикера <i>{input_tick_currency}</i> уже занято.</b>\n Пожалуйста, придумайте другое.',
+                f'❌ <b>Тикер <i>{input_tick_currency}</i> уже занят.</b>\n Пожалуйста, придумайте другое.',
                 parse_mode="html"
             )
             return
 
-        await state.update_data(tick_currency=input_tick_currency)
-        logger.info(f"FSMContext обновлено: tick_currency={input_tick_currency}")
+        await update_state(state, tick_currency=input_tick_currency)
 
         await state.set_state(SG.FormCurrencyEmissionRequest.following_resource)
 
@@ -167,24 +159,19 @@ async def input_following_resource_for_emission_national_currency(message: Messa
             parse_mode="html"
         )
     except Exception as error:
-        await message.answer(
-            f'❌ <b>Неверный формат тикера валюты.</b>\n{error}\nПожалуйста, придумайте другой.',
-            parse_mode="html"
-        )
-        logger.error(f"Ошибка в input_following_resource_for_emission_national_currency: {error}")
+        await callback_utils.handle_exception(message, 'input_following_resource_for_emission_national_currency', error, '❌ <b>Неверный формат тикера валюты.</b>')
 
 
-@router.callback_query(lambda c: c.data and c.data.startswith(f'{FOLLOWING_RESOURCE_NAT_CURRENCY}_'))
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["FOLLOW_RESOURCE"]}_'))
 async def input_course_following_for_emission_national_currency(callback: CallbackQuery, state: FSMContext):
     """
     Проверка ввода ресурса сопровождения и ввод курс соотношения между нац. валютой и закрепленным за ним ресурсом.
     """
     try:
-        number_match = callback_utils.parse_callback_data(callback.data, FOLLOWING_RESOURCE_NAT_CURRENCY)[0]
-        following_resource = callback_utils.parse_callback_data(callback.data, FOLLOWING_RESOURCE_NAT_CURRENCY)[1]
+        data_parse = callback_utils.parse_callback_data(callback.data, PREFIXES["FOLLOW_RESOURCE"])
+        number_match, following_resource  = data_parse[0], data_parse[1]
 
-        await state.update_data(following_resource=following_resource)
-        logger.info(f"FSMContext обновлено: following_resource={following_resource}")
+        await update_state(state, following_resource=following_resource)
 
         await state.set_state(SG.FormCurrencyEmissionRequest.course_following)
 
@@ -209,10 +196,7 @@ async def input_course_following_for_emission_national_currency(callback: Callba
             f'</blockquote>'
         )
     except Exception as error:
-        await callback_utils.handle_error(callback, error,
-            f'❌ <b>Ошибка на этапе ввода закрепленного ресурса.</b>\n{error}\nПожалуйста, попробуете позже.',
-        )
-        logger.error(f"Ошибка в input_course_following_for_emission_national_currency: {error}")
+        await callback_utils.handle_exception(callback, 'input_course_following_for_emission_national_currency', error, '❌ <b>Ошибка на этапе ввода закрепленного ресурса.</b>')
 
 
 @router.message(SG.FormCurrencyEmissionRequest.course_following)
@@ -227,8 +211,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
         if (course_following < 1000.00) or (course_following > 100000.00):
             raise ValueError('Соотношение между вашей валютой и закрепленного ресурса, должен быть не меньше 1 000,00 и не больше 100 000,00')
 
-        await state.update_data(course_following=course_following)
-        logger.info(f"FSMContext обновлено: course_following={course_following}")
+        await update_state(state, course_following=course_following)
 
         await state.set_state(SG.FormCurrencyEmissionRequest.capitalization)
 
@@ -254,11 +237,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
             parse_mode="html"
         )
     except (Exception, ValueError) as error:
-        await message.answer(
-            f'❌ <b>Неверный формат курса соотношения.</b> \n{error} Пожалуйста, введите другое значение.',
-            parse_mode="html"
-        )
-        logger.error(f"<input_amount_for_emission_national_currency>: {error}")
+        await callback_utils.handle_exception(message, 'input_amount_for_emission_national_currency', error, '❌ <b>Неверный формат курса соотношения.</b>')
 
 
 @router.message(SG.FormCurrencyEmissionRequest.capitalization)
@@ -273,25 +252,27 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
         elif capitalization > 500000:
             raise Exception('Объем обеспечения валюты выставлен не реалистично много.')
 
-        await state.update_data(capitalization=capitalization)
-        logger.info(f"FSMContext обновлено: capitalization={capitalization}")
-
+        await update_state(state, capitalization=capitalization)
 
         data_currency_emission_request = await state.get_data()
 
         await state.set_state(SG.FormCurrencyEmissionRequest.amount_emission_currency)
         amount_emission_currency = capitalization * data_currency_emission_request['course_following']
-        await state.update_data(amount_emission_currency=amount_emission_currency)
-        logger.info(f"FSMContext обновлено: amount_emission_currency={amount_emission_currency}")
+
+        await update_state(state, amount_emission_currency=amount_emission_currency)
 
         timezone = pytz.timezone("Europe/Moscow")
         now_date = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
 
-        await state.update_data(date_request_creation=now_date)
+        await update_state(state, date_request_creation=now_date)
+
         await state.set_state(SG.FormCurrencyEmissionRequest.status_confirmed)
-        await state.update_data(status_confirmed=False)
+
+        await update_state(state, status_confirmed=False)
+
         await state.set_state(SG.FormCurrencyEmissionRequest.date_confirmed)
-        await state.update_data(date_confirmed='')
+
+        await update_state(state, date_confirmed='')
 
         data_request_emission_national_currency = await state.get_data()
         number_match = data_request_emission_national_currency['number_match']
@@ -315,7 +296,7 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
                 f"<b>Название валюты:</b> {name_currency}\n"
                 f"<b>Тикер валюты:</b> {tick_currency}\n"
                 f"<b>Валюта закреплена за ресурсом:</b> {following_resource}\n"
-                f"<b>Соотношение валюты к ресурсу:</b> {course_following} единиц к 1 {following_resource}\n"
+                f"<b>Соотношение валюты к ресурсу:</b> {course_following} ед. к 1 {following_resource}\n"
                 f"<b>Объем эмиссии:</b> {amount_emission_currency} единиц\n"
                 f"<b>Капитализация:</b> {capitalization} серебра\n\n"
             '</blockquote>'
@@ -328,13 +309,13 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
                                             parse_mode='html')
 
         await state.set_state(SG.FormCurrencyEmissionRequest.message_id_delete)
-        await state.update_data(message_id_delete=sent_message.message_id)
+
+        await update_state(state, message_id_delete=sent_message.message_id)
     except Exception as error:
-        await message.answer(f'Ошибка при обработке объема обеспечения валюты: {error}')
-        logger.error(f"<end_emission_national_currency>: {error}")
+        await callback_utils.handle_exception(message, 'end_emission_national_currency', error, '❌ <b>Ошибка при обработке объема обеспечения валюты.</b>')
 
 
-@router.callback_query(F.data == 'ConfirmFormEmissionNatCurrency')
+@router.callback_query(F.data == PREFIXES['CONFIRM'])
 async def confirm_form_emission_national_currency(callback: CallbackQuery, state: FSMContext):
     """
     Подтверждение заполненной формы эмиссии национальной валюты.
@@ -349,9 +330,6 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
     course_following = format_large_number(data_request_emission_national_currency['course_following'])
     amount_emission_currency = format_large_number(data_request_emission_national_currency['amount_emission_currency'])
     capitalization = format_large_number(data_request_emission_national_currency['capitalization'])
-
-    # TODO удали print когда он станет не нужным
-    print(data_request_emission_national_currency)
 
     await match_db.save_currency_emission_request(data_request_emission_national_currency)
 
@@ -372,7 +350,7 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
 
     await delete_message(callback.bot, callback.from_user.id, data_request_emission_national_currency['message_id_delete'])
 
-    sent_message = await callback.message.answer_photo(
+    await callback.message.answer_photo(
         photo,
         instructions,
         parse_mode='html'
@@ -401,25 +379,22 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         f"</blockquote>"
     )
 
-    admin_decision_message = await callback.bot.send_message(
+    await callback.bot.send_message(
         chat_id=chat_id_admin,
         text=admin_message,
         reply_markup=await kb.verify_form_emission_national_currency(number_match=data_request_emission_national_currency['number_match']),
         parse_mode="html"
     )
 
-    # TODO сохранить сообщение администрации, чтобы при решении админа сообщение в чате админа удалилось
 
-
-@router.callback_query(lambda c: c.data and c.data.startswith(f'{RESTART_EMISSION_NAT_CURRENCY}_'))
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))
 async def restart_form_emission_national_currency(callback: CallbackQuery, state: FSMContext):
     """
     Перезапуск процесса заполнения формы эмиссии национальной валюты.
     """
     try:
-        number_match = callback_utils.parse_callback_data(callback.data, RESTART_EMISSION_NAT_CURRENCY)[0]
+        number_match = callback_utils.parse_callback_data(callback.data, PREFIXES["RESTART"])[0]
         await state.clear()
         await start_emission_national_currency(callback, state, number_match)
     except Exception as error:
-        logger.error(f"Ошибка в restart_form_emission_national_currency: {error}", exc_info=True)
-        await callback.answer("Не удалось перезапустить форму. Пожалуйста, попробуйте позже.", show_alert=True)
+        await callback_utils.handle_exception(callback, 'restart_form_emission_national_currency', error, '❌ <b>Не удалось перезапустить форму.</b>')

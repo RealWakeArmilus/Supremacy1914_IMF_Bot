@@ -1,5 +1,17 @@
+import logging
+from aiogram.fsm.context import FSMContext
+
 # import StatesGroup
 from aiogram.fsm.state import StatesGroup, State
+
+
+logger = logging.getLogger(__name__)
+
+
+# State updater utility
+async def update_state(state: FSMContext, **kwargs):
+    await state.update_data(**kwargs)
+    logger.info(f"FSMContext updated with: {kwargs}")
 
 
 # Определите состояния для хранения message_id
