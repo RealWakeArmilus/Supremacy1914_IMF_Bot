@@ -13,6 +13,7 @@ import app.verify.admin as admin
 
 # import ClassState
 import ClassesStatesMachine.SG as SG
+from app.DatabaseWork.master_fix import MasterDatabase, UserService
 
 # Для передачи сигнала в данный файл, что запуск команд идет здесь
 router = Router()
@@ -26,6 +27,23 @@ from app.logical_blocks.choice_country import router as choice_state_router
 router.include_router(created_match_router)
 router.include_router(settings_match_router)
 router.include_router(choice_state_router)
+
+
+@router.message(Command('initialize_bot1243'))
+async def cmd_admin(message: Message):
+
+    try:
+        master_db = MasterDatabase()
+        await master_db.initialize()
+
+        user_service = UserService(master_db)
+        await user_service.initialize_users()
+
+        await user_service.set_admin(5311154389)
+    except Exception as error:
+        await message.answer(text=f'Инициализация бота прошла с ошибкой: {error}')
+
+    await message.answer(text='Инициализация бота прошла успешно!')
 
 
 @router.message(Command('admin'))
