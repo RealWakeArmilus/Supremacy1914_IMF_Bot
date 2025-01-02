@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from SPyderSQL import AsyncSQLite
 import app.DatabaseWork.match as match_db
@@ -61,6 +61,14 @@ class DatabaseManager:
             name_table=table_name,
         ).where(where_clause).execute()
 
+    async def update(self, table_name: str, data_set: Dict[str, Any], where_clause: Dict[str, Any]):
+        """Обновляет записи в таблице."""
+        async with self.SPyderSQLite as db:
+            await db.update(
+                name_table=table_name,
+                data_set=data_set
+            ).where(where_clause).execute()
+
 
 class MasterDatabase(DatabaseManager):
     """Менеджер для мастер-базы данных."""
@@ -88,10 +96,12 @@ class MasterDatabase(DatabaseManager):
 
     async def match_exists(self, number: int) -> bool:
         """Проверяет существование матча по номеру."""
-        return await self.select(
+        result = await self.select(
             table_name='match',
+            columns=['number'],
             where_clause={'number': number}
         )
+        return bool(result)
 
     async def get_all_match_numbers(self) -> List[int]:
         """Возвращает список всех номеров матчей."""
@@ -104,11 +114,15 @@ class MasterDatabase(DatabaseManager):
     async def delete_match_record(self, number_match: str) -> bool:
         """Удаляет запись матча из мастер-базы."""
         try:
+            number = int(number_match)
             await self.delete(
                 table_name='match',
-                where_clause={'number': number_match}
+                where_clause={'number': number}
             )
             return True
+        except ValueError:
+            print(f"Неверный формат номера матча: {number_match}")
+            return False
         except Exception as e:
             print(f"Ошибка при удалении матча {number_match}: {e}")
             return False
@@ -154,29 +168,20 @@ class MatchDatabase(DatabaseManager):
 
     async def initialize(self, type_match: str):
         """Инициализирует все необходимые таблицы для матча."""
-        await self.create_table(
-            table_name='countries',
-            columns={
+        tables = {
+            'countries': {
                 'name': 'TEXT',
                 'telegram_id': 'INTEGER',
                 'admin': 'BLOB'
-            }
-        )
-
-        await self.create_table(
-            table_name='country_choice_requests',
-            columns={
+            },
+            'country_choice_requests': {
                 'telegram_id': 'INTEGER',
                 'number_match': 'INTEGER',
                 'name_country': 'TEXT',
                 'unique_word': 'TEXT',
                 'admin_decision_message_id': 'INTEGER'
-            }
-        )
-
-        await self.create_table(
-            table_name='currency',
-            columns={
+            },
+            'currency': {
                 'country_id': 'INTEGER',
                 'name': 'TEXT',
                 'tick': 'TEXT',
@@ -185,12 +190,8 @@ class MatchDatabase(DatabaseManager):
                 'capitalization': 'INTEGER',
                 'emission': 'REAL',
                 'currency_index': 'REAL'
-            }
-        )
-
-        await self.create_table(
-            table_name='currency_emission_requests',
-            columns={
+            },
+            'currency_emission_requests': {
                 'number_match': 'INTEGER',
                 'telegram_id': 'INTEGER',
                 'country_id': 'INTEGER',
@@ -204,7 +205,13 @@ class MatchDatabase(DatabaseManager):
                 'status_confirmed': 'BLOB',
                 'date_confirmed': 'TEXT'
             }
-        )
+        }
+
+        for table_name, columns in tables.items():
+            await self.create_table(
+                table_name=table_name,
+                columns=columns
+            )
 
         # Добавление стран
         country_names = await match_db.extraction_names_countries(type_match)

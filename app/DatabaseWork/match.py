@@ -104,11 +104,16 @@ async def save_country_choice_requests(user_id: int, number_match: str, name_cou
             raise ValueError("One or more parameters are missing! Missing required parameters.")
 
         # Checking Type Conformance
-        assert isinstance(user_id, int), "user_id должен быть целым числом"
-        assert isinstance(number_match, str) and number_match.isdigit(), "number_match должен быть числом в виде строки"
-        assert isinstance(name_country, str), "name_country должен быть строкой"
-        assert isinstance(unique_word, str), "unique_word должен быть строкой"
-        assert isinstance(admin_decision_message_id, int), "admin_decision_message_id должен быть int"
+        if not isinstance(user_id, int):
+            raise TypeError("user_id должен быть целым числом")
+        if not (isinstance(number_match, str) and number_match.isdigit()):
+            raise TypeError("number_match должен быть числом в виде строки")
+        if not isinstance(name_country, str):
+            raise TypeError("name_country должен быть строкой")
+        if not isinstance(unique_word, str):
+            raise TypeError("unique_word должен быть строкой")
+        if not isinstance(admin_decision_message_id, int):
+            raise TypeError("admin_decision_message_id должен быть int")
 
         # Preparing data for insertion
         column_names = ['telegram_id', 'number_match', 'name_country', 'unique_word', 'admin_decision_message_id']
@@ -125,7 +130,7 @@ async def save_country_choice_requests(user_id: int, number_match: str, name_cou
             name_table='country_choice_requests',
             names_columns=column_names
         ).execute(parameters=values)
-    except ValueError as error:
+    except (ValueError, TypeError) as error:
         print(f'Error "app/DatabaseWork/match/save_country_choice_requests": {error}')
 
 
@@ -240,9 +245,12 @@ async def get_data_currency(data_country: dict, number_match: str) -> dict | Non
     """
     try:
         columns = ['country_id',
-                   'name', 'tick',
-                   'following_resource', 'course_following',
-                   'capitalization', 'emission',
+                   'name',
+                   'tick',
+                   'following_resource',
+                   'course_following',
+                   'capitalization',
+                   'emission',
                    'currency_index'
                    ]
 
@@ -332,42 +340,84 @@ async def save_currency_emission_request(data_request: dict):
     """
     try:
         # Check for None
-        if (data_request['number_match'] is None or data_request['data_country']['telegram_id'] is None or data_request['data_country']['country_id'] is None
-            or data_request['name_currency'] is None or data_request['tick_currency'] is None
-            or data_request['following_resource'] is None or data_request['course_following'] is None
-            or data_request['capitalization'] is None or data_request['amount_emission_currency'] is None
-            or data_request['date_request_creation'] is None
-            or data_request['status_confirmed'] is None or data_request['date_confirmed'] is None):
-            raise ValueError("One or more parameters are missing! Missing required parameters.")
+        required_fields = [
+            'number_match',
+            'data_country',
+            'name_currency',
+            'tick_currency',
+            'following_resource',
+            'course_following',
+            'capitalization',
+            'amount_emission_currency',
+            'date_request_creation',
+            'status_confirmed',
+            'date_confirmed'
+        ]
+
+        if not all(field in data_request and data_request[field] is not None for field in required_fields):
+            raise ValueError("One or more parameters are missing!")
+
+        data_country = data_request['data_country']
+        if not data_country:
+            raise ValueError("'data_country' is missing in data_request.")
 
         # Checking Type Conformance
-        assert isinstance(data_request['number_match'], str) and data_request['number_match'].isdigit(), "number_match должен быть числом в виде строки"
-        assert isinstance(data_request['data_country']['telegram_id'], int), "telegram_id должен быть int"
-        assert isinstance(data_request['data_country']['country_id'], int), "country_id должен быть int"
-        assert isinstance(data_request['name_currency'], str), "name_currency должен быть строкой"
-        assert isinstance(data_request['tick_currency'], str), "tick_currency должен быть строкой"
-        assert isinstance(data_request['following_resource'], str), "following_resource должен быть строкой"
-        assert isinstance(data_request['course_following'], float), "course_following должен быть float"
-        assert isinstance(data_request['capitalization'], int), "capitalization должен быть int"
-        assert isinstance(data_request['amount_emission_currency'], float), "amount_emission_currency должен быть float"
-        assert isinstance(data_request['date_request_creation'], str), "date_request_creation должен быть строкой"
-        assert isinstance(data_request['status_confirmed'], bool), "status_confirmed должен быть bool"
-        assert isinstance(data_request['date_confirmed'], str), "date_confirmed должен быть строкой"
+        if not (isinstance(data_request['number_match'], str) and data_request['number_match'].isdigit()):
+            raise TypeError("number_match должен быть числом в виде строки.")
+        if not isinstance(data_country['telegram_id'], int):
+            raise TypeError("telegram_id должен быть int.")
+        if not isinstance(data_country['country_id'], int):
+            raise TypeError("country_id должен быть int.")
+        if not isinstance(data_request['name_currency'], str):
+            raise TypeError("name_currency должен быть строкой.")
+        if not isinstance(data_request['tick_currency'], str):
+            raise TypeError("tick_currency должен быть строкой.")
+        if not isinstance(data_request['following_resource'], str):
+            raise TypeError("following_resource должен быть строкой.")
+        if not isinstance(data_request['course_following'], (float, int)):  # Позволяет int для гибкости
+            raise TypeError("course_following должен быть float.")
+        if not isinstance(data_request['capitalization'], int):
+            raise TypeError("capitalization должен быть int.")
+        if not isinstance(data_request['amount_emission_currency'], (float, int)):
+            raise TypeError("amount_emission_currency должен быть float.")
+        if not isinstance(data_request['date_request_creation'], str):
+            raise TypeError("date_request_creation должен быть строкой.")
+        if not isinstance(data_request['status_confirmed'], bool):
+            raise TypeError("status_confirmed должен быть bool.")
+        if not isinstance(data_request['date_confirmed'], str):
+            raise TypeError("date_confirmed должен быть строкой.")
 
 
         # Preparing data for insertion
-        column_names = ['number_match', 'telegram_id' ,'country_id',
-                        'name_currency', 'tick_currency',
-                        'following_resource', 'course_following',
-                        'capitalization', 'amount_emission_currency',
-                        'date_request_creation',
-                        'status_confirmed', 'date_confirmed']
-        values = (int(data_request['number_match']), data_request['data_country']['telegram_id'], data_request['data_country']['country_id'],
-                  data_request['name_currency'], data_request['tick_currency'],
-                  data_request['following_resource'], data_request['course_following'],
-                  data_request['capitalization'], data_request['amount_emission_currency'],
-                  data_request['date_request_creation'],
-                  data_request['status_confirmed'], data_request['date_confirmed'])
+        column_names = [
+            'number_match',
+            'telegram_id',
+            'country_id',
+            'name_currency',
+            'tick_currency',
+            'following_resource',
+            'course_following',
+            'capitalization',
+            'amount_emission_currency',
+            'date_request_creation',
+            'status_confirmed',
+            'date_confirmed'
+        ]
+
+        values = (
+            int(data_request['number_match']),
+            data_request['data_country']['telegram_id'],
+            data_request['data_country']['country_id'],
+            data_request['name_currency'],
+            data_request['tick_currency'],
+            data_request['following_resource'],
+            data_request['course_following'],
+            data_request['capitalization'],
+            data_request['amount_emission_currency'],
+            data_request['date_request_creation'],
+            data_request['status_confirmed'],
+            data_request['date_confirmed']
+        )
 
         # Checking data length
         if len(column_names) != len(values):
@@ -380,7 +430,7 @@ async def save_currency_emission_request(data_request: dict):
             name_table='currency_emission_requests',
             names_columns=column_names
         ).execute(parameters=values)
-    except ValueError as error:
+    except (ValueError, TypeError) as error:
         print(f'Error "app/DatabaseWork/match/save_currency_emission_requests": {error}')
 
 
@@ -419,18 +469,23 @@ async def get_data_form_emis_nat_currency_request(user_id: int, number_match: st
     ).execute()
 
     for request in data_requests:
-        if (request['telegram_id'] == user_id) and (request['status_confirmed'] is False or request['status_confirmed'] == 0) and (request['date_confirmed'] == ''):
-            return {'id': request['id'],
-                    'number_match': request['number_match'],
-                    'telegram_id': request['telegram_id'],
-                    'country_id': request['country_id'],
-                    'name_currency': request['name_currency'],
-                    'tick_currency': request['tick_currency'],
-                    'following_resource': request['following_resource'],
-                    'course_following': request['course_following'],
-                    'capitalization': request['capitalization'],
-                    'amount_emission_currency': request['amount_emission_currency'],
-                    'date_request_creation': request['date_request_creation'],
-                    'status_confirmed': request['status_confirmed'],
-                    'date_confirmed': request['date_confirmed']}
+        if (request['telegram_id'] == user_id and
+                not request['status_confirmed'] and
+                request['date_confirmed'] == ''):
+            return {
+                'id': request['id'],
+                'number_match': request['number_match'],
+                'telegram_id': request['telegram_id'],
+                'country_id': request['country_id'],
+                'name_currency': request['name_currency'],
+                'tick_currency': request['tick_currency'],
+                'following_resource': request['following_resource'],
+                'course_following': request['course_following'],
+                'capitalization': request['capitalization'],
+                'amount_emission_currency': request['amount_emission_currency'],
+                'date_request_creation': request['date_request_creation'],
+                'status_confirmed': request['status_confirmed'],
+                'date_confirmed': request['date_confirmed']
+            }
+    return None
 
