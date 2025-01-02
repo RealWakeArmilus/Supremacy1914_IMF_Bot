@@ -101,7 +101,7 @@ class MasterDatabase(DatabaseManager):
         )
         return [match['number'] for match in matches]
 
-    async def delete_match_record(self, number_match: int) -> bool:
+    async def delete_match_record(self, number_match: str) -> bool:
         """Удаляет запись матча из мастер-базы."""
         try:
             await self.delete(
@@ -136,10 +136,12 @@ class MasterDatabase(DatabaseManager):
         """Возвращает telegram_id администратора."""
         # TODO возвращает лишь одного, сделай так чтобы выводился список админов в будущем
 
-        return await self.select(
+        data_admin = await self.select(
             table_name='users',
             where_clause={'admin': True}
         )
+
+        return data_admin['telegram_id']
 
 
 class MatchDatabase(DatabaseManager):
@@ -226,7 +228,7 @@ class MatchService:
         match_db_instance = MatchDatabase(number_match)
         await match_db_instance.initialize(type_match)
 
-    async def delete_match(self, number_match: int) -> bool:
+    async def delete_match(self, number_match: str) -> bool:
         """Удаляет матч из мастер-базы и соответствующую базу данных."""
         success = await self.master_db.delete_match_record(number_match)
         if not success:

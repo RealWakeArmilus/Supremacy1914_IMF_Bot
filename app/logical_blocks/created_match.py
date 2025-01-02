@@ -5,7 +5,6 @@ import logging
 
 # Import required modules
 import ClassesStatesMachine.SG as SG
-# import app.DatabaseWork.master as master_db
 from app.DatabaseWork.master_fix import MasterDatabase, MatchService
 import app.keyboards.created_match as kb
 from app.message_designer.deletezer import delete_message

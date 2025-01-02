@@ -9,7 +9,7 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 # import keyboards
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
-import app.DatabaseWork.master as master_db
+from app.DatabaseWork.master_fix import MasterDatabase
 import app.DatabaseWork.match as match_db
 import app.keyboards.emission_national_currency as kb
 from app.message_designer.formatzer import format_large_number
@@ -17,6 +17,8 @@ from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
 logger = logging.getLogger(__name__)
+
+master_db = MasterDatabase()
 
 # Router setup
 router = Router()
@@ -361,7 +363,7 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         parse_mode='html'
     )
 
-    chat_id_admin = await master_db.get_telegram_id_admin()
+    chat_id_admin = await master_db.get_admin_telegram_id()
     admin_message = (
         f"<i><b>Запрос государства</b> на <b>эмиссию</b> своей <b>нац. валюты</b></i>\n"
         f"<b>Дата заявки:</b> {date_request_creation}\n\n"

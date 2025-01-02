@@ -1,9 +1,7 @@
-from aiogram import Router, F
-from aiogram.fsm.context import FSMContext
+from aiogram import Router
 from aiogram.types import CallbackQuery
 
 # import keyboards
-import app.DatabaseWork.master as master_db
 import app.DatabaseWork.match as match_db
 import app.keyboards.country_menu as kb
 from app.message_designer.deletezer import delete_message

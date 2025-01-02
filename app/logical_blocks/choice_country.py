@@ -3,12 +3,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
-import app.DatabaseWork.master as master_db
+from app.DatabaseWork.master_fix import MasterDatabase
 import app.DatabaseWork.match as match_db
 import app.keyboards.choice_country as kb
 from app.message_designer.deletezer import delete_message_photo
 from app.message_designer.randomaizer import generate_custom_random_unique_word
 from app.utils import callback_utils
+
+master_db = MasterDatabase()
 
 # Router setup
 router = Router()
@@ -81,48 +83,49 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
 
     :param callback: CallbackQuery
     """
-    try:
-        data_parts = callback_utils.parse_callback_data(callback.data, CHOICE_COUNTRY_FROM_MATCH)
-        number_match, name_country = data_parts[0], data_parts[1]
+    # try:
+    data_parts = callback_utils.parse_callback_data(callback.data, CHOICE_COUNTRY_FROM_MATCH)
+    number_match, name_country = data_parts[0], data_parts[1]
 
-        await callback_utils.notify_user(callback, f"Вы выбрали государство: {name_country}")
-        await callback_utils.send_edit_message(callback, 'Обработка...')
+    await callback_utils.notify_user(callback, f"Вы выбрали государство: {name_country}")
+    await callback_utils.send_edit_message(callback, 'Обработка...')
 
-        unique_word = generate_custom_random_unique_word()
+    unique_word = generate_custom_random_unique_word()
 
-        instructions = (
-            f"<b>Следуйте этой инструкции, для подтверждения вашей заявки:</b>\n"
-            f"<pre>"
-            f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
-            f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
-            f"3. Отправьте ему кодовое слово: {unique_word};\n"
-            f"4. Ожидайте подтверждения вашей заявки.\n"
-            f"</pre>\n"
-            f"<pre>"
-            f"Важно: не передавайте кодовое слово никому.\n"
-            f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
-            f"</pre>"
-        )
+    instructions = (
+        f"<b>Следуйте этой инструкции, для подтверждения вашей заявки:</b>\n"
+        f"<pre>"
+        f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
+        f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
+        f"3. Отправьте ему кодовое слово: {unique_word};\n"
+        f"4. Ожидайте подтверждения вашей заявки.\n"
+        f"</pre>\n"
+        f"<pre>"
+        f"Важно: не передавайте кодовое слово никому.\n"
+        f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
+        f"</pre>"
+    )
 
-        await callback_utils.send_edit_message(callback, instructions)
+    await callback_utils.send_edit_message(callback, instructions)
 
-        chat_id_admin = await master_db.get_telegram_id_admin()
-        admin_message = (
-            f"<b>Запрос на выбор государства</b>\n"
-            f"<b>Матч:</b> {number_match}\n"
-            f"<b>Государство:</b> {name_country}\n"
-            f"<b>Кодовое слово:</b> {unique_word}"
-        )
+    chat_id_admin = await master_db.get_admin_telegram_id()
 
-        admin_decision_message = await callback.bot.send_message(
-            chat_id=chat_id_admin,
-            text=admin_message,
-            reply_markup=await kb.country_verify_by_admin(unique_word, number_match),
-            parse_mode="html"
-        )
+    admin_message = (
+        f"<b>Запрос на выбор государства</b>\n"
+        f"<b>Матч:</b> {number_match}\n"
+        f"<b>Государство:</b> {name_country}\n"
+        f"<b>Кодовое слово:</b> {unique_word}"
+    )
 
-        # save chat_id user and data request choice state
-        await match_db.save_country_choice_requests(callback.from_user.id, number_match, name_country, unique_word, admin_decision_message.message_id)
+    admin_decision_message = await callback.bot.send_message(
+        chat_id=chat_id_admin,
+        text=admin_message,
+        reply_markup=await kb.country_verify_by_admin(unique_word, number_match),
+        parse_mode="html"
+    )
 
-    except Exception as error:
-        await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор государства.")
+    # save chat_id user and data request choice state
+    await match_db.save_country_choice_requests(callback.from_user.id, number_match, name_country, unique_word, admin_decision_message.message_id)
+
+    # except Exception as error:
+    #     await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор государства.")

@@ -1,5 +1,6 @@
-import sqlite3
-from SPyderSQL import SQLite
+from SPyderSQL import AsyncSQLite
+
+SPyderSQL = AsyncSQLite
 
 
 async def extraction_names_countries(type_match: str) -> list:
@@ -19,14 +20,19 @@ async def get_free_countries_from_match_for_user(number_match_db: str) -> list:
     :param number_match_db: 'database/{number_match_db}.db'
     :return: actual list free countries from match for user
     """
-    data_number_match = SQLite.select_table(f'database/{number_match_db}.db',
-                                            'countries',
-                                            ['name', 'telegram_id'])
+    SPyderSQLite = SPyderSQL(f'database/{number_match_db}.db')
+
+    data_number_match = await SPyderSQLite.select(
+        name_table='countries',
+        names_columns=['name',
+                       'telegram_id'
+                       ]
+    ).execute()
 
     countries_from_match = list()
 
     for data_country in data_number_match:
-        if data_country['telegram_id'] == 0:
+        if data_country['telegram_id'] is None:
             countries_from_match.append(data_country['name'])
 
     return countries_from_match
@@ -41,9 +47,12 @@ async def check_country_choice_requests(number_match_db: str, user_id: int) -> b
     :param user_id: message.from_user.id
     :return: True - заявка еще ждет проверки, False - заявка нет.
     """
-    data_requests = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'country_choice_requests',
-                                           ['telegram_id'])
+    SPyderSQLite = SPyderSQL(f'database/{number_match_db}.db')
+
+    data_requests = await SPyderSQLite.select(
+        name_table='country_choice_requests',
+        names_columns=['telegram_id']
+    ).execute()
 
     for request in data_requests:
         if request['telegram_id'] == user_id:
@@ -63,9 +72,14 @@ async def check_choice_country_in_match_db(number_match_db: str, user_id: int) -
     :param user_id: message.from_user.id
     :return: dict - заявка прошла проверку и ее одобрили, None - заявка прошла проверку и ее отклонили.
     """
-    data_country = SQLite.select_table(f'database/{number_match_db}.db',
-                                           'countries',
-                                           ['name', 'telegram_id'])
+    SPyderSQLite = SPyderSQL(f'database/{number_match_db}.db')
+
+    data_country = await SPyderSQLite.select(
+        name_table='countries',
+        names_columns=['name',
+                       'telegram_id'
+                       ]
+    ).execute()
 
     for country in data_country:
         if country['telegram_id'] == user_id:
@@ -105,11 +119,12 @@ async def save_country_choice_requests(user_id: int, number_match: str, name_cou
             raise ValueError(f"Mismatch between columns and values! Values: {values} for Columns: {column_names}")
 
         # Inserting data into the database
-        SQLite.insert_table(f'database/{number_match}.db',
-                            'country_choice_requests',
-                            column_names,
-                            values
-        )
+        SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+        await SPyderSQLite.insert(
+            name_table='country_choice_requests',
+            names_columns=column_names
+        ).execute(parameters=values)
     except ValueError as error:
         print(f'Error "app/DatabaseWork/match/save_country_choice_requests": {error}')
 
@@ -122,14 +137,20 @@ async def get_data_country_choice_request(unique_word: str, number_match: str) -
     :param number_match: номер матча
     :return: данные заявки {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match}
     """
+    SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
 
-    data_users = SQLite.select_table(f'database/{number_match}.db',
-                                    'country_choice_requests',
-                                    ['telegram_id', 'name_country', 'unique_word', 'admin_decision_message_id'])
-
+    data_users = await SPyderSQLite.select(
+        name_table='country_choice_requests',
+        names_columns=['telegram_id',
+                       'name_country',
+                       'unique_word',
+                       'admin_decision_message_id'
+                       ]
+    ).execute()
     for user in data_users:
         if user['unique_word'] == unique_word:
-            return {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match, 'unique_word': user['unique_word'], 'admin_decision_message_id': user['admin_decision_message_id']}
+            return {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match,
+                    'unique_word': user['unique_word'], 'admin_decision_message_id': user['admin_decision_message_id']}
 
 
 async def deleted_request_country_in_match(data_user: dict):
@@ -139,12 +160,13 @@ async def deleted_request_country_in_match(data_user: dict):
     :param data_user:
     """
     try:
-        with sqlite3.connect(f'database/{data_user['number_match']}.db') as db:
-            db.execute("DELETE FROM country_choice_requests WHERE unique_word = ?", (data_user['unique_word'],))
-            db.commit()
-            return True
-    except sqlite3.Error as e:
-        print(f"Ошибка при удалении заявки на подтверждения государства: {data_user['name_country']}: {e}")
+        SPyderSQLite = SPyderSQL(f'database/{data_user['number_match']}.db')
+
+        await SPyderSQLite.delete(
+            name_table='country_choice_requests',
+        ).where({'unique_word': data_user['unique_word']}).execute()
+    except Exception as error:
+        print(f"Ошибка при удалении заявки на подтверждения государства: {data_user['name_country']}: {error}")
         return False
 
 
@@ -155,10 +177,12 @@ async def register_country_in_match(data_user: dict):
     :param data_user: {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match}
     """
     # change telegram id of the appropriate country
-    SQLite.update_table(f'database/{data_user['number_match']}.db',
-                        'countries',
-                        {'telegram_id': data_user['telegram_id']},
-                        {'name': data_user['name_country']})
+    SPyderSQLite = SPyderSQL(f'database/{data_user['number_match']}.db')
+
+    await SPyderSQLite.update(
+        name_table='countries',
+        data_set={'telegram_id': data_user['telegram_id']}
+    ).where({'name': data_user['name_country']}).execute()
 
     await deleted_request_country_in_match(data_user)
 
@@ -172,9 +196,16 @@ async def get_data_country(user_id: int, number_match: str) -> dict | None:
     :return: dict {country_id, name_country, status: {admin}, currency: [] }
     """
     try:
-        data_countries = SQLite.select_table(f'database/{number_match}.db',
-                                        'countries',
-                                        ['id', 'telegram_id', 'name', 'admin'])
+        SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+        data_countries = await SPyderSQLite.select(
+            name_table='countries',
+            names_columns=['id',
+                           'telegram_id',
+                           'name',
+                           'admin'
+                           ]
+        ).execute()
     except Exception as error:
         print(f"Ошибка при получении данных о странах: {error}. № Матч {number_match}.")
         return None
@@ -215,9 +246,12 @@ async def get_data_currency(data_country: dict, number_match: str) -> dict | Non
                    'currency_index'
                    ]
 
-        data_currencies = SQLite.select_table(f'database/{number_match}.db',
-                                            'currency',
-                                            columns)
+        SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+        data_currencies = await SPyderSQLite.select(
+            name_table='currency',
+            names_columns=columns
+        ).execute()
     except Exception as error:
         print(f"Ошибка при получении данных о валюте: {error}. № Матч {number_match}.")
         return None
@@ -254,9 +288,12 @@ async def check_name_currency_exists(number_match: str, name_currency: str):
     :param name_currency: name currency
     :return:
     """
-    names_currency = SQLite.select_table(f'database/{number_match}.db',
-                                         'currency',
-                                         ['name'])
+    SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+    names_currency = await SPyderSQLite.select(
+        name_table='currency',
+        names_columns=['name']
+    ).execute()
 
     for name in names_currency:
         if name['name'] == name_currency:
@@ -273,9 +310,12 @@ async def check_tick_currency_exists(number_match: str, tick_currency: str):
     :param tick_currency: tick currency
     :return:
     """
-    ticks_currency = SQLite.select_table(f'database/{number_match}.db',
-                                         'currency',
-                                         ['tick'])
+    SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+    ticks_currency = await SPyderSQLite.select(
+        name_table='currency',
+        names_columns=['tick']
+    ).execute()
 
     for tick in ticks_currency:
         if tick['tick'] == tick_currency:
@@ -334,10 +374,63 @@ async def save_currency_emission_request(data_request: dict):
             raise ValueError(f"Mismatch between columns and values! Values: {values} for Columns: {column_names}")
 
         # Inserting data into the database
-        SQLite.insert_table(f'database/{int(data_request['number_match'])}.db',
-                            'currency_emission_requests',
-                            column_names,
-                            values
-        )
+        SPyderSQLite = SPyderSQL(f'database/{int(data_request['number_match'])}.db')
+
+        await SPyderSQLite.insert(
+            name_table='currency_emission_requests',
+            names_columns=column_names
+        ).execute(parameters=values)
     except ValueError as error:
         print(f'Error "app/DatabaseWork/match/save_currency_emission_requests": {error}')
+
+
+async def get_data_form_emis_nat_currency_request(user_id: int, number_match: str):
+    """
+    Возвращает все базовые данные заявки эмиссии валюты, конкретного государства
+
+    :param user_id: id пользователя
+    :param number_match: номер матча
+    :return: данные заявки {'id': request['id'],
+                    'number_match': request['number_match'], 'telegram_id': request['telegram_id'], 'country_id': request['country_id'],
+                    'name_currency': request['name_currency'], 'tick_currency': request['tick_currency'],
+                    'following_resource': request['following_resource'], 'course_following': request['course_following'],
+                    'capitalization': request['capitalization'], 'amount_emission_currency': request['amount_emission_currency'],
+                    'date_request_creation': request['date_request_creation'],
+                    'status_confirmed': request['status_confirmed'], 'date_confirmed': request['date_confirmed']}
+    """
+    SPyderSQLite = SPyderSQL(f'database/{number_match}.db')
+
+    data_requests = await SPyderSQLite.select(
+        name_table='currency_emission_requests',
+        names_columns=['id',
+                       'number_match',
+                       'telegram_id',
+                       'country_id',
+                       'name_currency',
+                       'tick_currency',
+                       'following_resource',
+                       'course_following',
+                       'capitalization',
+                       'amount_emission_currency',
+                       'date_request_creation',
+                       'status_confirmed',
+                       'date_confirmed'
+                       ]
+    ).execute()
+
+    for request in data_requests:
+        if (request['telegram_id'] == user_id) and (request['status_confirmed'] is False or request['status_confirmed'] == 0) and (request['date_confirmed'] == ''):
+            return {'id': request['id'],
+                    'number_match': request['number_match'],
+                    'telegram_id': request['telegram_id'],
+                    'country_id': request['country_id'],
+                    'name_currency': request['name_currency'],
+                    'tick_currency': request['tick_currency'],
+                    'following_resource': request['following_resource'],
+                    'course_following': request['course_following'],
+                    'capitalization': request['capitalization'],
+                    'amount_emission_currency': request['amount_emission_currency'],
+                    'date_request_creation': request['date_request_creation'],
+                    'status_confirmed': request['status_confirmed'],
+                    'date_confirmed': request['date_confirmed']}
+
