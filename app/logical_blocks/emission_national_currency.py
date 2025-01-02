@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 # Router setup
 router = Router()
 
+# import routers from logical_blocks
+from app.logical_blocks.verify_emission_national_currency import router as verify_emission_national_currency_router
+
+# connect routers from logical_blocks
+router.include_router(verify_emission_national_currency_router)
+
 # Callback prefixes
 PREFIXES = {
     "START": "StartEmissionNationalCurrency",
@@ -28,10 +34,6 @@ PREFIXES = {
     "CONFIRM": "ConfirmFormEmissionNatCurrency",
     "RESTART": "RestartFormEmissionNatCurrency",
 }
-# START_EMISSION_NATIONAL_CURRENCY = 'StartEmissionNationalCurrency'
-# AMOUNT_EMISSION_NAT_CURRENCY = 'AmountEmissionNatCurrency'
-# FOLLOWING_RESOURCE_NAT_CURRENCY = 'FollowingResourceNatCurrency'
-# RESTART_EMISSION_NAT_CURRENCY = 'RestartFormEmissionNatCurrency'
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["START"]}_'))
@@ -41,13 +43,16 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
         if number_match is None:
             try:
                 number_match = number_match or callback_utils.parse_callback_data(callback.data, PREFIXES["START"])[0]
-                # parse_number_match = callback_utils.parse_callback_data(callback.data, START_EMISSION_NATIONAL_CURRENCY)[0]
-                # number_match = parse_number_match
             except (IndexError, TypeError) as error:
                 await callback_utils.handle_error(callback, error, 'Ошибка при разборе запуска формы эмиссии нац. валюты. ')
                 return
 
         await callback_utils.notify_user(callback, f'Заполнение бланка "эмиссии национальной валюты" для матча: {number_match}')
+
+        # TODO проверь есть ли уже созданные заявки на эмиссию, если есть то пишешь что ждет одобрения заявки на эмиссию
+
+
+
 
         await state.set_state(SG.FormCurrencyEmissionRequest.number_match)
         await update_state(state, number_match=number_match)

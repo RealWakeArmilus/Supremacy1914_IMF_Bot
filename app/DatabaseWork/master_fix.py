@@ -1,53 +1,65 @@
 import os
-import sqlite3
 from typing import List, Optional
 
-from SPyderSQL import SQLite, TypesSQLite
+from SPyderSQL import AsyncSQLite
 import app.DatabaseWork.match as match_db
 
 # Constants
 MASTER_DB_PATH = 'database/master.db'
+
+SPyderSQLite = AsyncSQLite
 
 
 class DatabaseManager:
     """Базовый менеджер для работы с SQLite базой данных."""
 
     def __init__(self, db_path: str):
-        self.db_path = db_path
+        self.SPyderSQLite = SPyderSQLite(db_path)
 
     async def create_table(self, table_name: str, columns: dict):
         """Создает таблицу в базе данных."""
-        SQLite.create_table(
-            self.db_path,
-            table_name,
-            columns,
-            True
-        )
+        await self.SPyderSQLite.create(
+            name_table=table_name,
+            append_columns=columns,
+            id_primary_key=True
+        ).execute()
 
     async def insert(self, table_name: str, columns: List[str], values: tuple):
         """Вставляет запись в таблицу."""
-        SQLite.insert_table(
-            self.db_path,
-            table_name,
-            columns,
-            values
-        )
+        await self.SPyderSQLite.insert(
+            name_table=table_name,
+            names_columns=columns
+        ).execute(parameters=values)
 
-    async def select(self, table_name: str, columns: List[str], where_clause: Optional[str] = None, params: Optional[tuple] = None):
+    async def select(self, table_name: str, columns: List[str] = None, where_clause: dict = None):
         """Выбирает записи из таблицы."""
-        return SQLite.select_table(
-            self.db_path,
-            table_name,
-            columns,
-            # where_clause,
-            # params
-        )
+        if columns is None and where_clause:
 
-    async def delete(self, table_name: str, where_clause: str, params: tuple):
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+            ).where(where_clause).fetch_one()
+
+        elif where_clause is None and columns:
+
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+                names_columns=columns
+            ).execute()
+
+        elif None is (columns, where_clause):
+
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+            ).execute()
+
+        else:
+            print('Error: SQLRequest select from DatabaseManager.master_fix in columns, where_clause == ?')
+
+    async def delete(self, table_name: str, where_clause: dict):
         """Удаляет записи из таблицы."""
-        with sqlite3.connect(self.db_path) as db:
-            db.execute(f"DELETE FROM {table_name} WHERE {where_clause}", params)
-            db.commit()
+        await self.SPyderSQLite.delete(
+            name_table=table_name,
+        ).where(where_clause).execute()
 
 
 class MasterDatabase(DatabaseManager):
@@ -58,33 +70,44 @@ class MasterDatabase(DatabaseManager):
 
     async def initialize(self):
         """Инициализирует необходимые таблицы в мастер-базе."""
-        await self.create_table('match', {
-            'number': TypesSQLite.integer.value,
-            'type_map': TypesSQLite.text.value
-        })
+        await self.create_table(
+            table_name='match',
+            columns={
+                'number': 'INTEGER',
+                'type_map': 'TEXT'
+            }
+        )
 
     async def add_match(self, number_match: int, type_match: str):
         """Добавляет новый матч в мастер-базу."""
         await self.insert(
-            'match',
-            ['number', 'type_map'],
-            (number_match, type_match)
+            table_name='match',
+            columns=['number', 'type_map'],
+            values=(number_match, type_match)
         )
 
     async def match_exists(self, number: int) -> bool:
         """Проверяет существование матча по номеру."""
-        matches = await self.select('match', ['number'])
-        return any(match['number'] == number for match in matches)
+        return await self.select(
+            table_name='match',
+            where_clause={'number': number}
+        )
 
     async def get_all_match_numbers(self) -> List[int]:
         """Возвращает список всех номеров матчей."""
-        matches = await self.select('match', ['number'])
+        matches = await self.select(
+            table_name='match',
+            columns=['number']
+        )
         return [match['number'] for match in matches]
 
     async def delete_match_record(self, number_match: int) -> bool:
         """Удаляет запись матча из мастер-базы."""
         try:
-            await self.delete('match', 'number = ?', (number_match,))
+            await self.delete(
+                table_name='match',
+                where_clause={'number': number_match}
+            )
             return True
         except Exception as e:
             print(f"Ошибка при удалении матча {number_match}: {e}")
@@ -92,26 +115,31 @@ class MasterDatabase(DatabaseManager):
 
     async def initialize_users(self):
         """Инициализирует таблицу пользователей."""
-        await self.create_table('users', {
-            'telegram_id': TypesSQLite.integer.value,
-            'admin': TypesSQLite.integer.value
-        })
+        await self.create_table(
+            table_name='users',
+            columns={
+                'telegram_id': 'INTEGER',
+                'admin': 'BLOB'
+            }
+        )
 
     async def add_admin(self, telegram_id: int):
         """Добавляет администратора в таблицу пользователей."""
         await self.insert(
-            'users',
-            ['telegram_id', 'admin'],
-            (telegram_id, True)
+            table_name='users',
+            columns=['telegram_id', 'admin'],
+            values=(telegram_id, True)
         )
 
-    async def get_admin_telegram_id(self) -> Optional[int]:
+
+    async def get_admin_telegram_id(self) -> Optional[int] | None:
         """Возвращает telegram_id администратора."""
-        users = await self.select('users', ['telegram_id', 'admin'])
-        for user in users:
-            if user['admin']:
-                return user['telegram_id']
-        return None
+        # TODO возвращает лишь одного, сделай так чтобы выводился список админов в будущем
+
+        return await self.select(
+            table_name='users',
+            where_clause={'admin': True}
+        )
 
 
 class MatchDatabase(DatabaseManager):
@@ -124,54 +152,65 @@ class MatchDatabase(DatabaseManager):
 
     async def initialize(self, type_match: str):
         """Инициализирует все необходимые таблицы для матча."""
+        await self.create_table(
+            table_name='countries',
+            columns={
+                'name': 'TEXT',
+                'telegram_id': 'INTEGER',
+                'admin': 'BLOB'
+            }
+        )
 
-        await self.create_table('countries', {
-            'name': TypesSQLite.text.value,
-            'telegram_id': TypesSQLite.integer.value,
-            'admin': TypesSQLite.blob.value
-        })
+        await self.create_table(
+            table_name='country_choice_requests',
+            columns={
+                'telegram_id': 'INTEGER',
+                'number_match': 'INTEGER',
+                'name_country': 'TEXT',
+                'unique_word': 'TEXT',
+                'admin_decision_message_id': 'INTEGER'
+            }
+        )
 
-        await self.create_table('country_choice_requests', {
-            'telegram_id': TypesSQLite.integer.value,
-            'number_match': TypesSQLite.integer.value,
-            'name_country': TypesSQLite.text.value,
-            'unique_word': TypesSQLite.text.value,
-            'admin_decision_message_id': TypesSQLite.integer.value
-        })
+        await self.create_table(
+            table_name='currency',
+            columns={
+                'country_id': 'INTEGER',
+                'name': 'TEXT',
+                'tick': 'TEXT',
+                'following_resource': 'TEXT',
+                'course_following': 'REAL',
+                'capitalization': 'INTEGER',
+                'emission': 'REAL',
+                'currency_index': 'REAL'
+            }
+        )
 
-        await self.create_table('currency', {
-            'country_id': TypesSQLite.integer.value,
-            'name': TypesSQLite.text.value,
-            'tick': TypesSQLite.text.value,
-            'following_resource': TypesSQLite.text.value,
-            'course_following': TypesSQLite.real.value,
-            'capitalization': TypesSQLite.integer.value,
-            'emission': TypesSQLite.real.value,
-            'currency_index': TypesSQLite.real.value
-        })
-
-        await self.create_table('currency_emission_requests', {
-            'number_match': TypesSQLite.integer.value,
-            'telegram_id': TypesSQLite.integer.value,
-            'country_id': TypesSQLite.integer.value,
-            'name_currency': TypesSQLite.text.value,
-            'tick_currency': TypesSQLite.text.value,
-            'following_resource': TypesSQLite.text.value,
-            'course_following': TypesSQLite.real.value,
-            'capitalization': TypesSQLite.integer.value,
-            'amount_emission_currency': TypesSQLite.real.value,
-            'date_request_creation': TypesSQLite.text.value,
-            'status_confirmed': TypesSQLite.blob.value,
-            'date_confirmed': TypesSQLite.text.value
-        })
+        await self.create_table(
+            table_name='currency_emission_requests',
+            columns={
+                'number_match': 'INTEGER',
+                'telegram_id': 'INTEGER',
+                'country_id': 'INTEGER',
+                'name_currency': 'TEXT',
+                'tick_currency': 'TEXT',
+                'following_resource': 'TEXT',
+                'course_following': 'REAL',
+                'capitalization': 'INTEGER',
+                'amount_emission_currency': 'REAL',
+                'date_request_creation': 'TEXT',
+                'status_confirmed': 'BLOB',
+                'date_confirmed': 'TEXT'
+            }
+        )
 
         # Добавление стран
         country_names = await match_db.extraction_names_countries(type_match)
         for name_country in country_names:
             await self.insert(
-                'countries',
-                ['name', 'admin'],
-                (name_country, False)
+                table_name='countries',
+                columns=['name', 'admin'],
+                values=(name_country, False)
             )
 
 

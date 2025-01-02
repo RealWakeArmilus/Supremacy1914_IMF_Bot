@@ -16,21 +16,6 @@ async def choice_following_resource_national_currency(number_match: str) -> Inli
     return builder.as_markup()
 
 
-async def choice_amount_emission_national_currency(number_match: str) -> InlineKeyboardMarkup | None:
-    """
-    :param number_match: number match
-    :return: InlineKeyboardMarkup | None
-    """
-    builder = InlineKeyboardBuilder()
-
-    builder.add(InlineKeyboardButton(text=str('5.000.000.000 (пять миллиардов) единиц.'), callback_data=f'AmountEmissionNatCurrency_{number_match}_5billions'))
-    builder.add(InlineKeyboardButton(text=str('10.000.000.000 (десять миллиардов) единиц.'), callback_data=f'AmountEmissionNatCurrency_{number_match}_10billions'))
-
-    builder.adjust(1)
-
-    return builder.as_markup()
-
-
 async def end_emission_national_currency(number_match: str) -> InlineKeyboardMarkup | None:
     """
     :param number_match: number match

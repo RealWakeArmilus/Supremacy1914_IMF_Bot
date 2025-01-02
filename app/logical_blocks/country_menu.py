@@ -33,9 +33,8 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
     """
     if number_match is None:
         try:
-            parse_number_match = callback_utils.parse_callback_data(callback.data, COUNTRY_MENU)[0]
+            number_match = number_match or callback_utils.parse_callback_data(callback.data, COUNTRY_MENU)[0]
             parse_message_id_delete = callback_utils.parse_callback_data(callback.data, COUNTRY_MENU)[1]
-            number_match = parse_number_match
             await delete_message(callback.bot, callback.message.chat.id, parse_message_id_delete)
         except (IndexError, TypeError) as error:
             await callback_utils.handle_error(callback, error, 'Ошибка при разборе данных:')
