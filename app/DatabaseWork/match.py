@@ -15,27 +15,27 @@ async def extraction_names_countries(type_match: str) -> list:
                 "Франция", "Центральные США", "Швеция", "Южная канада", "Южные США"]
 
 
-async def get_free_countries_from_match_for_user(number_match_db: str) -> list:
-    """
-    :param number_match_db: 'database/{number_match_db}.db'
-    :return: actual list free countries from match for user
-    """
-    SPyderSQLite = SPyderSQL(f'database/{number_match_db}.db')
-
-    data_number_match = await SPyderSQLite.select(
-        name_table='countries',
-        names_columns=['name',
-                       'telegram_id'
-                       ]
-    ).execute()
-
-    countries_from_match = list()
-
-    for data_country in data_number_match:
-        if data_country['telegram_id'] is None:
-            countries_from_match.append(data_country['name'])
-
-    return countries_from_match
+# async def get_free_countries_from_match_for_user(number_match_db: str) -> list:
+#     """
+#     :param number_match_db: 'database/{number_match_db}.db'
+#     :return: actual list free countries from match for user
+#     """
+#     SPyderSQLite = SPyderSQL(f'database/{number_match_db}.db')
+#
+#     data_number_match = await SPyderSQLite.select(
+#         name_table='countries',
+#         names_columns=['name',
+#                        'telegram_id'
+#                        ]
+#     ).execute()
+#
+#     countries_from_match = list()
+#
+#     for data_country in data_number_match:
+#         if data_country['telegram_id'] is None:
+#             countries_from_match.append(data_country['name'])
+#
+#     return countries_from_match
 
 
 async def check_country_choice_requests(number_match_db: str, user_id: int) -> bool:

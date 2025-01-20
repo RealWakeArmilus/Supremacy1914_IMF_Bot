@@ -5,15 +5,14 @@ import logging
 
 # Import required modules
 import ClassesStatesMachine.SG as SG
-from app.DatabaseWork.master_fix import MasterDatabase, MatchService
+from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.created_match as kb
+from app.keyboards.universal import launch_solution
 from app.message_designer.deletezer import delete_message
 from app.MyException import InvalidMatchNumberFormatError
 from app.utils import callback_utils
 
 logger = logging.getLogger(__name__)
-
-master_db = MasterDatabase()
 
 router = Router()
 
@@ -48,7 +47,7 @@ async def choice_type_match(message: Message, state: FSMContext):
         number_match = int(input_number_match)
 
         # Check if the map number already exists in the database
-        if await master_db.match_exists(number_match):
+        if await DatabaseManager().match_exists(number_match=number_match):
             raise InvalidMatchNumberFormatError('Этот номер матча уже существует')
 
         # Save valid map number and proceed to the next state
@@ -86,11 +85,16 @@ async def set_type_match(message: Message, state: FSMContext):
 
         await delete_message(message.bot, message.chat.id, send_message.message_id)
 
+        keyboard = await launch_solution(
+            launch_type='creation'
+        )
+
+
         await message.answer(
             '<b>Информация матча</b>'
             f'\n№ матча: {data_created_match["number"]}'
             f'\nТип: {data_created_match["type_match"]}',
-            reply_markup=kb.confirm_created_match,
+            reply_markup=keyboard,
             parse_mode="html"
         )
     except Exception as error:
@@ -110,8 +114,13 @@ async def confirm_match_creation(callback: CallbackQuery, state: FSMContext):
 
         data_created_match = await state.get_data()
 
-        match_service = MatchService(master_db)
-        await match_service.create_match(data_created_match['number'], data_created_match['type_match'])
+        await DatabaseManager().set_match(
+            number_match=data_created_match['number'],
+            type_match=data_created_match['type_match']
+        )
+        await DatabaseManager(data_created_match['number']).initialize_match(
+            type_match=data_created_match['type_match']
+        )
 
         await state.clear()
 

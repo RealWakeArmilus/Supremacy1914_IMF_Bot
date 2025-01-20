@@ -2,12 +2,9 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 # Import required modules
-from app.DatabaseWork.master_fix import MasterDatabase, MatchService
+from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.settings_match as kb
 from app.utils import callback_utils
-
-master_db = MasterDatabase()
-match_service = MatchService(master_db)
 
 router = Router()
 
@@ -47,8 +44,10 @@ async def deleted_match(callback: CallbackQuery):
     """Handle deletion of a match."""
     number_match = callback_utils.get_number_match_from_callback_data(callback.data, 'DeleteMatch')
 
+    success = await DatabaseManager().delete_match(
+        number_match=number_match
+    )
 
-    success = await match_service.delete_match(number_match)
     response = (
         f"Номер матча {number_match} был успешно удалён."
         if success else

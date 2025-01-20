@@ -2,11 +2,12 @@ from aiogram import Router
 from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
-import app.DatabaseWork.master as master_db
-import app.DatabaseWork.match as match_db
+from app.DatabaseWork.database import DatabaseManager
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
+
+# Router setup
 router = Router()
 
 
@@ -37,7 +38,7 @@ async def result_of_admin_decision_for_request_choice_country(callback: Callback
                                          f'\n<b>Государство:</b> {name_country}',
                                     parse_mode="html")
 
-    chat_id_admin = await master_db.get_telegram_id_admin()
+    chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
 
     await callback.bot.send_message(chat_id=chat_id_admin,
                                     text=f'<b>Вы {message_decision} заявку матча:</b> {number_match}'
@@ -55,9 +56,9 @@ async def confirm_request_country_by_admin(callback: CallbackQuery):
 
     try:
         # get data user who submitted the application
-        data_user = await match_db.get_data_country_choice_request(unique_word, number_match)
+        data_user = await DatabaseManager(database_path=number_match).get_data_country_choice_request(unique_word=unique_word, number_match=number_match)
 
-        await match_db.register_country_in_match(data_user)
+        await DatabaseManager(database_path=number_match).register_country_in_match(data_user=data_user)
 
         await result_of_admin_decision_for_request_choice_country(callback, number_match, data_user, True)
     except Exception as error:
@@ -74,10 +75,10 @@ async def reject_request_country_by_admin_(callback: CallbackQuery):
 
     try:
         # get data user who submitted the request
-        data_user = await match_db.get_data_country_choice_request(unique_word, number_match)
+        data_user = await DatabaseManager(number_match).get_data_country_choice_request(unique_word=unique_word, number_match=number_match)
 
         # deleted request
-        await match_db.deleted_request_country_in_match(data_user)
+        await DatabaseManager(database_path=number_match).deleted_request_country_in_match(data_user=data_user)
 
         await result_of_admin_decision_for_request_choice_country(callback, number_match, data_user)
     except Exception as error:

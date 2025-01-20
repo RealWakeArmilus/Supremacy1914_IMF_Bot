@@ -9,16 +9,16 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 # import keyboards
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
-from app.DatabaseWork.master_fix import MasterDatabase
 import app.DatabaseWork.match as match_db
+from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.emission_national_currency as kb
+from app.keyboards.universal import launch_solution, verify_request_by_admin
 from app.message_designer.formatzer import format_large_number
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
 logger = logging.getLogger(__name__)
 
-master_db = MasterDatabase()
 
 # Router setup
 router = Router()
@@ -59,7 +59,8 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
         await state.set_state(SG.FormCurrencyEmissionRequest.number_match)
         await update_state(state, number_match=number_match)
 
-        data_country = await match_db.get_data_country(callback.from_user.id, number_match)
+        data_country = await DatabaseManager(database_path=number_match).get_data_country(user_id=callback.from_user.id,number_match=number_match)
+
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
@@ -309,7 +310,10 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
             '</blockquote>'
         )
 
-        keyboard = await kb.end_emission_national_currency(data_request_emission_national_currency['number_match'])
+        keyboard = await launch_solution(
+            launch_type='FormEmissionNatCurrency',
+            number_match=number_match
+        )
 
         sent_message = await message.answer(rough_draft_message,
                                             reply_markup=keyboard,
@@ -363,7 +367,8 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         parse_mode='html'
     )
 
-    chat_id_admin = await master_db.get_admin_telegram_id()
+    chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
+
     admin_message = (
         f"<i><b>Запрос государства</b> на <b>эмиссию</b> своей <b>нац. валюты</b></i>\n"
         f"<b>Дата заявки:</b> {date_request_creation}\n\n"
@@ -386,10 +391,15 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         f"</blockquote>"
     )
 
+    keyboard = await verify_request_by_admin(
+        request_type='RequestFormEmisNatCur',
+        number_match=number_match,
+    )
+
     await callback.bot.send_message(
         chat_id=chat_id_admin,
         text=admin_message,
-        reply_markup=await kb.verify_form_emission_national_currency(number_match=data_request_emission_national_currency['number_match']),
+        reply_markup=keyboard,
         parse_mode="html"
     )
 

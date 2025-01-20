@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.types import CallbackQuery
 
 # import keyboards
-import app.DatabaseWork.match as match_db
+from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.country_menu as kb
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
@@ -38,9 +38,11 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
             await callback_utils.handle_error(callback, error, 'Ошибка при разборе данных:')
             return
 
+    data_country = await DatabaseManager(database_path=number_match).get_data_country(user_id=callback.from_user.id, number_match=number_match)
+    characteristics_country = await DatabaseManager(database_path=number_match).get_data_currency(data_country=data_country, number_match=number_match)
 
-    data_country = await match_db.get_data_country(callback.from_user.id, number_match)
-    characteristics_country = await match_db.get_data_currency(data_country, number_match)
+    print(f'data_country: {data_country}'
+          f'\ncharacteristics_country: {characteristics_country}')
 
     currency_info : str = ''
 

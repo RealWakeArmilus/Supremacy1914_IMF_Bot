@@ -3,14 +3,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
-from app.DatabaseWork.master_fix import MasterDatabase
-import app.DatabaseWork.match as match_db
+from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.choice_country as kb
+from app.keyboards.universal import verify_request_by_admin
 from app.message_designer.deletezer import delete_message_photo
 from app.message_designer.randomaizer import generate_custom_random_unique_word
 from app.utils import callback_utils
 
-master_db = MasterDatabase()
 
 # Router setup
 router = Router()
@@ -42,10 +41,10 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
         await callback_utils.notify_user(callback, f"Вы выбрали матч с номером: {number_match}")
         await delete_message_photo(callback, state)
 
-        request_country = await match_db.check_country_choice_requests(number_match, callback.from_user.id)
+        request_country = await DatabaseManager(database_path=number_match).check_country_choice_requests(user_id=callback.from_user.id)
 
         if request_country is False:
-            data_country = await match_db.check_choice_country_in_match_db(number_match, callback.from_user.id)
+            data_country = await DatabaseManager(database_path=number_match).check_choice_country_in_match_db(user_id=callback.from_user.id)
 
             if data_country:
                 await start_country_menu(callback, number_match)
@@ -56,7 +55,7 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
                 if free_countries:
                     await callback_utils.send_message(callback,f'Выберите государство за которое играете, на карте: {number_match}.'
                                                   '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
-                                                      await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}', number_match))
+                                                      markup=free_countries)
 
                 elif free_countries is None:
                     await callback_utils.send_message(callback,'К сожалению в данном матче свободных государств нет.')
@@ -108,7 +107,7 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
 
     await callback_utils.send_edit_message(callback, instructions)
 
-    chat_id_admin = await master_db.get_admin_telegram_id()
+    chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
 
     admin_message = (
         f"<b>Запрос на выбор государства</b>\n"
@@ -117,15 +116,27 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
         f"<b>Кодовое слово:</b> {unique_word}"
     )
 
+    keyboard = await verify_request_by_admin(
+        request_type='RequestCountryByAdmin',
+        number_match=number_match,
+        unique_word=unique_word
+    )
+
     admin_decision_message = await callback.bot.send_message(
         chat_id=chat_id_admin,
         text=admin_message,
-        reply_markup=await kb.country_verify_by_admin(unique_word, number_match),
+        reply_markup=keyboard,
         parse_mode="html"
     )
 
     # save chat_id user and data request choice state
-    await match_db.save_country_choice_requests(callback.from_user.id, number_match, name_country, unique_word, admin_decision_message.message_id)
+    await DatabaseManager(database_path=number_match).save_country_choice_requests(
+        user_id=callback.from_user.id,
+        number_match=number_match,
+        name_country=name_country,
+        unique_word=unique_word,
+        admin_decision_message_id=admin_decision_message.message_id
+    )
 
     # except Exception as error:
     #     await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор государства.")

@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-import app.DatabaseWork.match as match_db
+from app.DatabaseWork.database import DatabaseManager
 
 from app.message_designer.hashzer import hash_callback_suffix_64_name_state
 
@@ -17,7 +17,7 @@ async def free_countries_match(input_match_hash: str, number_match_db: str) -> I
     :param number_match_db:
     :return:
     """
-    names_country = await match_db.get_free_countries_from_match_for_user(number_match_db)
+    names_country = await DatabaseManager(number_match_db).get_free_country_names()
 
     if names_country:
 
@@ -44,19 +44,3 @@ async def free_countries_match(input_match_hash: str, number_match_db: str) -> I
     else:
         return None
 
-
-async def country_verify_by_admin(unique_word: str, number_match: str) -> InlineKeyboardMarkup | None:
-    """
-    Create keyboards from verify country by admin
-
-    :param number_match:
-    :param unique_word:
-    """
-    builder = InlineKeyboardBuilder()
-
-    builder.add(InlineKeyboardButton(text=str('✅ Подтвердить'), callback_data=f'ConfirmRequestCountryByAdmin_{unique_word}_{number_match}'))
-    builder.add(InlineKeyboardButton(text=str('❌ Отклонить'), callback_data=f'RejectRequestCountryByAdmin_{unique_word}_{number_match}'))
-
-    builder.adjust(1)
-
-    return builder.as_markup()

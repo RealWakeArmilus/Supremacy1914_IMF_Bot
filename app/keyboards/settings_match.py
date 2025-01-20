@@ -2,11 +2,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
     ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app.DatabaseWork.master_fix import MasterDatabase
+# from app.DatabaseWork.master_fix import MasterDatabase
+from app.DatabaseWork.database import DatabaseManager
 from app.message_designer.hashzer import hash_callback_suffix_64_name_state
 
 
-master_db = MasterDatabase()
+# master_db = MasterDatabase()
 
 
 async def numbers_match(input_match_hash: str = None) -> InlineKeyboardMarkup | None:
@@ -18,7 +19,7 @@ async def numbers_match(input_match_hash: str = None) -> InlineKeyboardMarkup | 
     :param input_match_hash: укажите хэштег для поиска нажатой кнопки, чтобы callback их отследил (пример: 'SettingMatch')
     :return:
     """
-    numbers = await master_db.get_all_match_numbers()
+    numbers = await DatabaseManager().get_all_match_numbers()
 
     if numbers:
 
