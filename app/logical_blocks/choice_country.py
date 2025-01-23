@@ -94,15 +94,19 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
         instructions = (
             f"<b>Следуйте этой инструкции, для подтверждения вашей заявки:</b>\n"
             f"<pre>"
-            f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
-            f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
-            f"3. Отправьте ему кодовое слово: {unique_word};\n"
-            f"4. Ожидайте подтверждения вашей заявки.\n"
+                f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
+                f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
+                f"3. Отправьте ему кодовое слово;\n"
+                f"4. Ожидайте подтверждения вашей заявки.\n"
             f"</pre>\n"
             f"<pre>"
-            f"Важно: не передавайте кодовое слово никому.\n"
-            f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
-            f"</pre>"
+                f"Важно: не передавайте кодовое слово никому.\n"
+                f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
+            f"</pre>\n"
+            "<b>Ваше кодовое слово</b>"
+            "<pre>"
+                f"{unique_word}"
+            "</pre>"
         )
 
         await callback_utils.send_edit_message(callback, instructions)

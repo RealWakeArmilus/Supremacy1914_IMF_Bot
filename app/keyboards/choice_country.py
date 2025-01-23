@@ -33,7 +33,6 @@ async def free_countries_match(input_match_hash: str, number_match_db: str) -> I
             if not hash_callback_data:
                 continue  # Skip this button if callback_data is invalid
 
-
             button = InlineKeyboardButton(text=str(name_country), callback_data=hash_callback_data)
             builder.add(button)
 
