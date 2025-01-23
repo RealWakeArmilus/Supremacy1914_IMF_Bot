@@ -80,7 +80,7 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
                 '<i>Правила названия валюты:</i>\n'
                 '<blockquote>'
                 '1. Не менее 3-х символов\n'
-                '2. Не более 8-ти символов\n'
+                '2. Не более 12-ти символов\n'
                 '3. Русскими или английскими буквами\n'
                 '4. Исключить числовые значения и знаки\n'
                 '5. Исключить матерные слова.'
@@ -101,7 +101,7 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
     """
     try:
         input_name_currency = message.text.strip().lower()
-        if not input_name_currency.isalpha() or not (3 <= len(input_name_currency) <= 8):
+        if not input_name_currency.isalpha() or not (3 <= len(input_name_currency) <= 12):
             raise ValueError('Название валюты должно быть от 3 до 8 символов и содержать только буквы.')
 
         data_currency_emission_request = await state.get_data()
@@ -224,7 +224,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
 
     try:
         course_following = round(float(course_following_input), 2)
-        if (course_following < 1000.00) or (course_following > 100000.00):
+        if not course_following.is_integer() and (course_following < 1000.00) or (course_following > 100000.00):
             raise ValueError('Соотношение между вашей валютой и закрепленного ресурса, должен быть не меньше 1 000,00 и не больше 100 000,00')
 
         await update_state(state, course_following=course_following)
@@ -396,11 +396,13 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
             "5. Содержит ли тикер валюты русские буквы или символьные дефекты\n"
             f"6. Объем эмиссии соответствует капитализации, по курсу {course_following} ед. == 1 серебро\n"
         f"</blockquote>"
+        f"\n\nПеред тем как одобрить или отклонить запрос дожитесь перевода {capitalization} серебра"
     )
 
     keyboard = await verify_request_by_admin(
         request_type='RequestFormEmisNatCur',
         number_match=number_match,
+        telegram_id_user=callback.from_user.id
     )
 
     send_admin_message = await callback.bot.send_message(

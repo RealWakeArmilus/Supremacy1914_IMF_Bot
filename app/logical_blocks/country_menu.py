@@ -42,8 +42,10 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
     data_country = await DatabaseManager(database_path=number_match).get_data_country(user_id=callback.from_user.id, number_match=number_match)
     characteristics_country = await DatabaseManager(database_path=number_match).get_data_currency(data_country=data_country, number_match=number_match)
 
-    print(f'data_country: {data_country}'
-          f'\ncharacteristics_country: {characteristics_country}')
+    print(
+        f'data_country: {data_country}'
+        f'\ncharacteristics_country: {characteristics_country}'
+    )
 
     currency_info : str = ''
 

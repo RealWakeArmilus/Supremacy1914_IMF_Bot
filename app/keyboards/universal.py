@@ -43,11 +43,13 @@ async def launch_solution(
 async def verify_request_by_admin(
         request_type: str,
         number_match: str,
-        unique_word: Optional[str] = None
+        unique_word: Optional[str] = None,
+        telegram_id_user: Optional[int] = None
 ) -> InlineKeyboardMarkup | None:
     """
     Создаёт инлайн клавиатуру для подтверждения или отклонения действия администратором.
 
+    :param telegram_id_user: Телеграм id пользователя, который создал заявку
     :param request_type: Тип заявки, например, 'RequestCountryByAdmin' или 'RequestFormEmisNatCur'.
     :param number_match: Номер матча.
     :param unique_word: (Опционально) Уникальное слово, если требуется.
@@ -60,8 +62,8 @@ async def verify_request_by_admin(
             confirm_callback = f'Confirm{request_type}_{unique_word}_{number_match}'
             reject_callback = f'Reject{request_type}_{unique_word}_{number_match}'
         elif request_type == 'RequestFormEmisNatCur':
-            confirm_callback = f'Confirm{request_type}_{number_match}'
-            reject_callback = f'Reject{request_type}_{number_match}'
+            confirm_callback = f'Confirm{request_type}_{number_match}_{telegram_id_user}'
+            reject_callback = f'Reject{request_type}_{number_match}_{telegram_id_user}'
         else:
             raise Exception('Невозможно создать клавиатуру "result - else".')
 

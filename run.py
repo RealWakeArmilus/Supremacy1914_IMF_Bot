@@ -24,7 +24,9 @@ async def main():
 
 if __name__ == "__main__":
 
-    log_processing(True)
+    view_logger = True
+
+    log_processing(view_logger)
 
     try:
         asyncio.run(main())

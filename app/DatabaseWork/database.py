@@ -266,6 +266,37 @@ class DatabaseManager:
         # Добавление стран
         await self.set_country_names(type_match=type_match)
 
+    async def initialize_currency_capitals_for_country(self, user_id: int, number_match: str):
+        """
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param user_id: message. from_user. id | callback. from_user. id
+        :param number_match: – number match
+        """
+        data_country = await self.get_data_country(
+            user_id=user_id,
+            number_match=number_match
+        )
+        data_currency = await self.get_data_currency(
+            data_country=data_country,
+            number_match=number_match
+        )
+
+        tables = {
+            f'currency_capitals_{data_country['country_id']}': {
+                'currency_id': 'INTEGER',
+                'amount': 'REAL'
+            }
+        }
+
+        for table_name, columns in tables.items():
+            await self.create(
+                table_name=table_name,
+                columns=columns
+            )
+
+        await self.set_capital_national_currency(data_currency=data_currency['currency'][0])
+
 
     async def delete_match_record(self, number_match: str) -> bool:
         """Удаляет запись матча из мастер-базы."""
@@ -522,10 +553,11 @@ class DatabaseManager:
 
         :param data_country: match_db.get_data_country()
         :param number_match: number match
-        :return:
+        :return: {'id','country_id','name','tick','following_resource','course_following','capitalization','emission','current_amount','current_course'}
         """
         try:
             column_names = [
+                'id',
                 'country_id',
                 'name',
                 'tick',
@@ -551,6 +583,8 @@ class DatabaseManager:
         for data_currency in data_currencies:
             if data_currency['country_id'] == data_country['country_id']:
                 currency_info = {
+                    'id': data_currency['id'],
+                    'country_id': data_currency['country_id'],
                     'name': data_currency['name'],
                     'tick': data_currency['tick'],
                     'following_resource': data_currency['following_resource'],
@@ -866,3 +900,23 @@ class DatabaseManager:
                 values=values
             )
 
+
+    async def set_capital_national_currency(self, data_currency: dict):
+        """
+        установка национальной валюты в таблицу капиталов валют, конкретного государства.
+        """
+        print(f'data_currency: {data_currency}')
+
+        country_id = data_currency['country_id']
+        currency_id = data_currency['id']
+        amount = data_currency['current_amount']
+
+        table_name = f'currency_capitals_{country_id}'
+        column_names = ['currency_id', 'amount']
+        values = (currency_id, amount)
+
+        await self.insert(
+            table_name=table_name,
+            columns=column_names,
+            values=values
+        )
