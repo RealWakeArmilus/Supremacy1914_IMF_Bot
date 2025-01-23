@@ -1,4 +1,7 @@
 import os
+from datetime import datetime
+import pytz
+
 from asyncio.log import logger
 from typing import List, Dict, Any, Optional
 
@@ -234,7 +237,8 @@ class DatabaseManager:
                 'course_following': 'REAL',
                 'capitalization': 'INTEGER',
                 'emission': 'REAL',
-                'currency_index': 'REAL'
+                'current_amount': 'REAL',
+                'current_course': 'REAL'
             },
             'currency_emission_requests': {
                 'number_match': 'INTEGER',
@@ -248,7 +252,8 @@ class DatabaseManager:
                 'amount_emission_currency': 'REAL',
                 'date_request_creation': 'TEXT',
                 'status_confirmed': 'BLOB',
-                'date_confirmed': 'TEXT'
+                'date_confirmed': 'TEXT',
+                'message_id_delete': 'INTEGER'
             }
         }
 
@@ -302,28 +307,44 @@ class DatabaseManager:
             return False
 
 
-    async def check_country_choice_requests(self, user_id: int) -> bool:
+    async def check_requests(self, name_requests: str, user_id: int) -> bool | None:
         """
-        Is there a player's application in the database?
-        \nЕсть ли заявка от игрока в базе данных?
+        \nПроверка на существование заявки в таблицах
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
 
-
+        :param name_requests: country_choice - заявка на резервацию государства, currency_emission - заявка на эмиссию валюты
         :param user_id: message.from_user.id
-        :return: True - заявка еще ждет проверки, False - заявка нет.
+        :return: True - есть заявка, False - нет заявка, None - если не правильный name_requests
         """
-        column_names = ['telegram_id']
 
-        data_requests = await self.select(
-            table_name='country_choice_requests',
-            columns=column_names
-        )
+        try:
+            if name_requests == 'country_choice':
+                column_names = ['telegram_id']
+                name_requests = 'country_choice_requests'
+            elif name_requests == 'currency_emission':
+                column_names = ['telegram_id', 'status_confirmed', 'date_confirmed']
+                name_requests = 'currency_emission_requests'
+            else:
+                raise Exception('Не правильно выбрано название таблицы заявок, для проверки заявки.')
 
-        for request in data_requests:
-            if request['telegram_id'] == user_id:
-                return True
+            data_requests = await self.select(
+                table_name=name_requests,
+                columns=column_names
+            )
 
-        return False
+            if name_requests == 'country_choice_requests':
+                for request in data_requests:
+                    if request['telegram_id'] == user_id:
+                        return True
+            elif name_requests == 'currency_emission_requests':
+                for request in data_requests:
+                    if request['telegram_id'] == user_id and request['status_confirmed'] == 0 and request['date_confirmed'] == '':
+                        return True
+
+            return False
+        except Exception as error:
+            print(f'ERROR: {error}')
+            return None
 
     async def check_choice_country_in_match_db(self, user_id: int) -> dict | None:
         """
@@ -438,7 +459,6 @@ class DatabaseManager:
         Регистрирует пользователя в конкретном матче на конкретное государство. Совершать только после подтверждения админа.
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
 
-
         :param data_user: {'telegram_id': user['telegram_id'], 'name_country': user['name_country'], 'number_match': number_match}
         """
         # change telegram id of the appropriate country
@@ -513,7 +533,8 @@ class DatabaseManager:
                 'course_following',
                 'capitalization',
                 'emission',
-                'currency_index'
+                'current_amount',
+                'current_course'
             ]
 
             data_currencies = await self.select(
@@ -533,10 +554,11 @@ class DatabaseManager:
                     'name': data_currency['name'],
                     'tick': data_currency['tick'],
                     'following_resource': data_currency['following_resource'],
-                    'course_following': data_currency['data_currency'],
+                    'course_following': data_currency['course_following'],
                     'capitalization': data_currency['capitalization'],
                     'emission': data_currency['emission'],
-                    'currency_index': data_currency['currency_index']
+                    'current_amount': data_currency['current_amount'],
+                    'current_course': data_currency['current_course']
                 }
                 break
 
@@ -547,3 +569,300 @@ class DatabaseManager:
             data_country['currency'].append(currency_info)
 
         return data_country
+
+    async def get_data_form_emis_nat_currency_request(self, user_id: int):
+        """
+        Возвращает все базовые данные заявки эмиссии валюты, конкретного государства
+
+        :param user_id: id пользователя
+        :return: данные заявки {'id': request['id'],
+                        'number_match': request['number_match'], 'telegram_id': request['telegram_id'], 'country_id': request['country_id'],
+                        'name_currency': request['name_currency'], 'tick_currency': request['tick_currency'],
+                        'following_resource': request['following_resource'], 'course_following': request['course_following'],
+                        'capitalization': request['capitalization'], 'amount_emission_currency': request['amount_emission_currency'],
+                        'date_request_creation': request['date_request_creation'],
+                        'status_confirmed': request['status_confirmed'], 'date_confirmed': request['date_confirmed']}
+        """
+        column_names = [
+            'id',
+            'number_match',
+            'telegram_id',
+            'country_id',
+            'name_currency',
+            'tick_currency',
+            'following_resource',
+            'course_following',
+            'capitalization',
+            'amount_emission_currency',
+            'date_request_creation',
+            'status_confirmed',
+            'date_confirmed',
+            'message_id_delete'
+        ]
+
+        data_requests = await self.select(
+            table_name='currency_emission_requests',
+            columns=column_names,
+        )
+
+        for request in data_requests:
+            if (request['telegram_id'] == user_id and
+                    not request['status_confirmed'] and
+                    request['date_confirmed'] == ''):
+                return {
+                    'id': request['id'],
+                    'number_match': request['number_match'],
+                    'telegram_id': request['telegram_id'],
+                    'country_id': request['country_id'],
+                    'name_currency': request['name_currency'],
+                    'tick_currency': request['tick_currency'],
+                    'following_resource': request['following_resource'],
+                    'course_following': request['course_following'],
+                    'capitalization': request['capitalization'],
+                    'amount_emission_currency': request['amount_emission_currency'],
+                    'date_request_creation': request['date_request_creation'],
+                    'status_confirmed': request['status_confirmed'],
+                    'date_confirmed': request['date_confirmed'],
+                    'message_id_delete': request['message_id_delete']
+                }
+        return None
+
+        # TODO придумать нужно где идет поиск одной заявки, а не всех. чтобы вывести ее, а не перебирать список заявок.
+
+        # where = {'telegram_id': user_id, 'status_confirmed': False, 'date_confirmed': ''}
+        #
+        # request = await self.select(
+        #     table_name='currency_emission_requests',
+        #     columns=column_names,
+        #     where_clause=where
+        # )
+        #
+        # if request:
+        #     return {
+        #             'id': request['id'],
+        #             'number_match': request['number_match'],
+        #             'telegram_id': request['telegram_id'],
+        #             'country_id': request['country_id'],
+        #             'name_currency': request['name_currency'],
+        #             'tick_currency': request['tick_currency'],
+        #             'following_resource': request['following_resource'],
+        #             'course_following': request['course_following'],
+        #             'capitalization': request['capitalization'],
+        #             'amount_emission_currency': request['amount_emission_currency'],
+        #             'date_request_creation': request['date_request_creation'],
+        #             'status_confirmed': request['status_confirmed'],
+        #             'date_confirmed': request['date_confirmed'],
+        #             'message_id_delete': request['message_id_delete']
+        #         }
+        # return None
+
+
+    async def check_data_currency_exists(self, name_currency: str = '', tick_currency: str = '') -> bool | None:
+        """
+        Проверка данных валюты, на совпадение в базе данных.
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param name_currency: Название валюты
+        :param tick_currency: Тикер валюты
+        :return: True - есть совпадение, False - нет совпадений, None - ничего не проверяется
+        """
+        column_names = []
+        name_parameter : str = ''
+        check_parameter = None
+
+        try:
+            if name_currency != '':
+                column_names = ['name']
+                name_parameter = 'name'
+                check_parameter = name_currency
+            elif tick_currency != '':
+                column_names = ['tick']
+                name_parameter = 'tick'
+                check_parameter = tick_currency
+            elif name_currency == '' or tick_currency == '':
+                raise Exception('При проверке данных валюты, на совпадение, ничего не было введено для проверки')
+
+            parameters_currency = await self.select(
+                table_name='currency',
+                columns=column_names
+            )
+
+            for parameter in parameters_currency:
+                if parameter[name_parameter] == check_parameter:
+                    return True
+
+            return False
+        except Exception as error:
+            print(f'Error: {error}')
+            return None
+
+    async def save_currency_emission_request(self, data_request: dict, message_id_delete: int):
+        """
+        Сохраняет заявку государства на эмиссию валюты в базу данных.
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param message_id_delete: сообщение которое нужно удалить в чате администратора
+        :param data_request: {'number_match': '9480505', 'telegram_id': 5311154389,
+        'country_id': 4, 'name_currency': 'Черпак', 'tick_currency': 'HPK', 'amount_emission_currency': 5000000000,
+        'capitalization': 50000, 'date_request_creation': '2024-12-27 02:46:32', 'status_confirmed': False, 'date_confirmed': '', 'message_id_delete': 1787}
+        """
+        try:
+            # Check for None
+            required_fields = [
+                'number_match',
+                'data_country',
+                'name_currency',
+                'tick_currency',
+                'following_resource',
+                'course_following',
+                'capitalization',
+                'amount_emission_currency',
+                'date_request_creation',
+                'status_confirmed',
+                'date_confirmed',
+                'message_id_delete'
+            ]
+
+            if not all(field in data_request and data_request[field] is not None for field in required_fields):
+                raise ValueError("One or more parameters are missing!")
+
+            data_country = data_request['data_country']
+            if not data_country:
+                raise ValueError("'data_country' is missing in data_request.")
+
+            # Checking Type Conformance
+            if not (isinstance(data_request['number_match'], str) and data_request['number_match'].isdigit()):
+                raise TypeError("number_match должен быть числом в виде строки.")
+            if not isinstance(data_country['telegram_id'], int):
+                raise TypeError("telegram_id должен быть int.")
+            if not isinstance(data_country['country_id'], int):
+                raise TypeError("country_id должен быть int.")
+            if not isinstance(data_request['name_currency'], str):
+                raise TypeError("name_currency должен быть строкой.")
+            if not isinstance(data_request['tick_currency'], str):
+                raise TypeError("tick_currency должен быть строкой.")
+            if not isinstance(data_request['following_resource'], str):
+                raise TypeError("following_resource должен быть строкой.")
+            if not isinstance(data_request['course_following'], (float, int)):  # Позволяет int для гибкости
+                raise TypeError("course_following должен быть float.")
+            if not isinstance(data_request['capitalization'], int):
+                raise TypeError("capitalization должен быть int.")
+            if not isinstance(data_request['amount_emission_currency'], (float, int)):
+                raise TypeError("amount_emission_currency должен быть float.")
+            if not isinstance(data_request['date_request_creation'], str):
+                raise TypeError("date_request_creation должен быть строкой.")
+            if not isinstance(data_request['status_confirmed'], bool):
+                raise TypeError("status_confirmed должен быть bool.")
+            if not isinstance(data_request['date_confirmed'], str):
+                raise TypeError("date_confirmed должен быть строкой.")
+            if not isinstance(message_id_delete, int):
+                raise TypeError("message_id_delete должен быть int.")
+
+            # Preparing data for insertion
+            column_names = [
+                'number_match',
+                'telegram_id',
+                'country_id',
+                'name_currency',
+                'tick_currency',
+                'following_resource',
+                'course_following',
+                'capitalization',
+                'amount_emission_currency',
+                'date_request_creation',
+                'status_confirmed',
+                'date_confirmed',
+                'message_id_delete'
+            ]
+
+            values = (
+                int(data_request['number_match']),
+                data_request['data_country']['telegram_id'],
+                data_request['data_country']['country_id'],
+                data_request['name_currency'],
+                data_request['tick_currency'],
+                data_request['following_resource'],
+                data_request['course_following'],
+                data_request['capitalization'],
+                data_request['amount_emission_currency'],
+                data_request['date_request_creation'],
+                data_request['status_confirmed'],
+                data_request['date_confirmed'],
+                message_id_delete
+            )
+
+            # Checking data length
+            if len(column_names) != len(values):
+                raise ValueError(f"Mismatch between columns and values! Values: {values} for Columns: {column_names}")
+
+            # Inserting data into the database
+            await self.insert(
+                table_name='currency_emission_requests',
+                columns=column_names,
+                values=values
+            )
+        except (ValueError, TypeError) as error:
+            print(f'Error "DatabaseManager/save_currency_emission_request": {error}')
+
+    async def register_currency_emission_in_match(self, data_request: dict, result_verify: bool = True):
+        """
+        Регистрирует эмиссию национальной валюты в конкретном матче на конкретное государство. Совершать только после подтверждения админа.
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param result_verify: решение администратора по заявке
+        :param data_request: данные заявки {'id': request['id'],
+                    'number_match': request['number_match'], 'telegram_id': request['telegram_id'], 'country_id': request['country_id'],
+                    'name_currency': request['name_currency'], 'tick_currency': request['tick_currency'],
+                    'following_resource': request['following_resource'], 'course_following': request['course_following'],
+                    'capitalization': request['capitalization'], 'amount_emission_currency': request['amount_emission_currency'],
+                    'date_request_creation': request['date_request_creation'],
+                    'status_confirmed': request['status_confirmed'], 'date_confirmed': request['date_confirmed']}
+        """
+        timezone = pytz.timezone("Europe/Moscow")
+        now_date = datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S")
+
+        data_set = {'status_confirmed': result_verify, 'date_confirmed': now_date}
+        where_clause = {'id': data_request['id']}
+
+        await self.update(
+            table_name='currency_emission_requests',
+            data_set=data_set,
+            where_clause=where_clause
+        )
+
+        if result_verify:
+            column_names = [
+                'country_id',
+                'name',
+                'tick',
+                'following_resource',
+                'course_following',
+                'capitalization',
+                'emission',
+                'current_amount',
+                'current_course'
+            ]
+
+            current_course = (data_request['amount_emission_currency'] / data_request['amount_emission_currency'])
+            current_course = current_course * data_request['course_following']
+            current_course = 1 / current_course
+            current_course = round(current_course, 9)
+
+            values = (
+                data_request['country_id'],
+                data_request['name_currency'],
+                data_request['tick_currency'],
+                data_request['following_resource'],
+                data_request['course_following'],
+                data_request['capitalization'],
+                data_request['amount_emission_currency'],
+                data_request['amount_emission_currency'],
+                current_course
+            )
+
+            await self.insert(
+                table_name='currency',
+                columns=column_names,
+                values=values
+            )
+

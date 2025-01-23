@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.country_menu as kb
 from app.message_designer.deletezer import delete_message
+from app.message_designer.formatzer import format_large_number
 from app.utils import callback_utils
 
 # Router setup
@@ -51,6 +52,8 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
             "не создана (...)"
             if characteristics_country['currency'][0] is False else
             f"{characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
+            f"\n<b>Курс валюты:</b> {format_large_number(characteristics_country['currency'][0]['current_course'])} {characteristics_country['currency'][0]['following_resource']}"
+            f"\n<b>Текущий запас валюты:</b> {format_large_number(characteristics_country['currency'][0]['current_amount'])} {characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
         )
     except Exception as error:
         await callback_utils.handle_error(callback, error, 'Ошибка при выводе информации валюты государства в главном меню государства')

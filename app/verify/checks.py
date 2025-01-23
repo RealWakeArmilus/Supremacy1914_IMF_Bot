@@ -2,9 +2,6 @@ from SPyderSQL import SQLite
 import ClassesStatesMachine.Statuses as Status
 
 
-import app.DatabaseWork.master as master_db
-
-
 async def identify_chat_type(chat_type : str) -> Status.TypeChat:
     """
     Checks type user.
@@ -33,14 +30,13 @@ async def identify_chat_type(chat_type : str) -> Status.TypeChat:
 
         return Status.TypeChat.UNKNOWN
 
+
 async def identify_user_admin(chat_id: int) -> Status.TypeUser:
     """
 
     :param chat_id: message.chat.id
     :return: status user type
     """
-    await master_db.created_table_user()
-
     data_users = SQLite.select_table('database/master.db',
                                  'users',
                                  ['telegram_id', 'admin'])

@@ -9,7 +9,6 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 # import keyboards
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
-import app.DatabaseWork.match as match_db
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.emission_national_currency as kb
 from app.keyboards.universal import launch_solution, verify_request_by_admin
@@ -23,11 +22,13 @@ logger = logging.getLogger(__name__)
 # Router setup
 router = Router()
 
+
 # import routers from logical_blocks
 from app.logical_blocks.verify_emission_national_currency import router as verify_emission_national_currency_router
 
 # connect routers from logical_blocks
 router.include_router(verify_emission_national_currency_router)
+
 
 # Callback prefixes
 PREFIXES = {
@@ -51,37 +52,44 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
 
         await callback_utils.notify_user(callback, f'Заполнение бланка "эмиссии национальной валюты" для матча: {number_match}')
 
-        # TODO проверь есть ли уже созданные заявки на эмиссию, если есть то пишешь что ждет одобрения заявки на эмиссию
-
-
-
-
-        await state.set_state(SG.FormCurrencyEmissionRequest.number_match)
-        await update_state(state, number_match=number_match)
-
-        data_country = await DatabaseManager(database_path=number_match).get_data_country(user_id=callback.from_user.id,number_match=number_match)
-
-        if not data_country:
-            raise ValueError("Не удалось получить данные страны.")
-
-        await state.set_state(SG.FormCurrencyEmissionRequest.data_country)
-        await update_state(state, data_country=data_country)
-
-        await state.set_state(SG.FormCurrencyEmissionRequest.name_currency)
-
-        await callback_utils.send_edit_message(callback,
-            f'<b>№ матча:</b> {number_match}\n'
-            f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
-            '<i>Правила названия валюты:</i>\n'
-            '<blockquote>'
-            '1. Не менее 3-х символов\n'
-            '2. Не более 8-ти символов\n'
-            '3. Русскими или английскими буквами\n'
-            '4. Исключить числовые значения и знаки\n'
-            '5. Исключить матерные слова.'
-            '</blockquote>\n\n'
-            '<b>Придумайте и введите название вашей валюты:</b>'
+        request_currency_emission = await DatabaseManager(database_path=number_match).check_requests(
+            name_requests='currency_emission',
+            user_id=callback.from_user.id
         )
+
+        if request_currency_emission is False:
+
+            await state.set_state(SG.FormCurrencyEmissionRequest.number_match)
+            await update_state(state, number_match=number_match)
+
+            data_country = await DatabaseManager(database_path=number_match).get_data_country(
+                user_id=callback.from_user.id,number_match=number_match
+            )
+
+            if not data_country:
+                raise ValueError("Не удалось получить данные страны.")
+
+            await state.set_state(SG.FormCurrencyEmissionRequest.data_country)
+            await update_state(state, data_country=data_country)
+
+            await state.set_state(SG.FormCurrencyEmissionRequest.name_currency)
+
+            await callback_utils.send_edit_message(callback,
+                f'<b>№ матча:</b> {number_match}\n'
+                f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
+                '<i>Правила названия валюты:</i>\n'
+                '<blockquote>'
+                '1. Не менее 3-х символов\n'
+                '2. Не более 8-ти символов\n'
+                '3. Русскими или английскими буквами\n'
+                '4. Исключить числовые значения и знаки\n'
+                '5. Исключить матерные слова.'
+                '</blockquote>\n\n'
+                '<b>Придумайте и введите название вашей валюты:</b>'
+            )
+        elif request_currency_emission:
+            await callback_utils.send_message(callback, '<b>Ваша заявка еще ожидает проверку.</b> '
+                                                        '\nСледуйте инструкции, которая была выпущена после подачи заявки на эмиссию валюты.')
     except Exception as error:
         await callback_utils.handle_exception(callback, 'start_emission_national_currency', error)
 
@@ -102,7 +110,7 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
         if not number_match:
             raise KeyError("Ключ 'number_match' отсутствует в данных FSMContext.")
 
-        if await match_db.check_name_currency_exists(number_match, input_name_currency):
+        if await DatabaseManager(database_path=number_match).check_data_currency_exists(name_currency=input_name_currency):
             await message.answer(
                 f'❌ <b>Название валюты <i>{input_name_currency}</i> уже занято.</b>\n Пожалуйста, придумайте другое.',
                 parse_mode="html"
@@ -148,7 +156,7 @@ async def input_following_resource_for_emission_national_currency(message: Messa
         data_country = data_currency_emission_request['data_country']
         number_match = data_currency_emission_request['number_match']
 
-        if await match_db.check_tick_currency_exists(number_match, input_tick_currency):
+        if await DatabaseManager(database_path=number_match).check_data_currency_exists(tick_currency=input_tick_currency):
             await message.answer(
                 f'❌ <b>Тикер <i>{input_tick_currency}</i> уже занят.</b>\n Пожалуйста, придумайте другое.',
                 parse_mode="html"
@@ -342,10 +350,9 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
     amount_emission_currency = format_large_number(data_request_emission_national_currency['amount_emission_currency'])
     capitalization = format_large_number(data_request_emission_national_currency['capitalization'])
 
-    await match_db.save_currency_emission_request(data_request_emission_national_currency)
 
     instructions = (
-        f"<b>Следуйте этой инструкции, для подтверждения вашей эмиссии:</b>\n"
+        f"<b>Следуйте этой инструкции, для подтверждения эмиссии вашей нац. валюты:</b>\n"
         f"<blockquote>"
         f"1. <b>Откройте игру:</b> Supremacy1914\n"
         f"2. <b>Войдите в матч под номером:</b> {number_match};\n"
@@ -396,12 +403,15 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         number_match=number_match,
     )
 
-    await callback.bot.send_message(
+    send_admin_message = await callback.bot.send_message(
         chat_id=chat_id_admin,
         text=admin_message,
         reply_markup=keyboard,
         parse_mode="html"
     )
+
+    await DatabaseManager(database_path=number_match).save_currency_emission_request(data_request=data_request_emission_national_currency, message_id_delete=send_admin_message.message_id)
+
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))

@@ -2,8 +2,9 @@ from aiogram import Router
 from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
-import app.DatabaseWork.match as match_db
+# import app.DatabaseWork.match as match_db
 from app.DatabaseWork.database import DatabaseManager
+from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
 
@@ -76,11 +77,14 @@ async def confirm_request_form_emis_nat_currency_by_admin(callback: CallbackQuer
 
     try:
         # get data user who submitted the application
-        data_request = await match_db.get_data_form_emis_nat_currency_request(callback.from_user.id, number_match)
+        # data_request = await match_db.get_data_form_emis_nat_currency_request(callback.from_user.id, number_match)
+        data_request = await DatabaseManager(database_path=number_match).get_data_form_emis_nat_currency_request(user_id=callback.from_user.id)
 
-        # TODO регистрация данных эмиссии в базу валют.
-        #  Так же изменение данных заявки на одобрено и указать время одобрения
+        await DatabaseManager(database_path=number_match).register_currency_emission_in_match(data_request=data_request)
 
+        chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
+
+        await delete_message(callback.bot, chat_id_admin, data_request['message_id_delete'])
 
         await result_of_admin_decision_for_request_emis_nat_currency(callback, number_match, data_request, True)
     except Exception as error:
@@ -94,10 +98,10 @@ async def reject_request_form_emis_nat_currency_by_admin(callback: CallbackQuery
 
     try:
         # get data user who submitted the application
-        data_request = await match_db.get_data_form_emis_nat_currency_request(callback.from_user.id, number_match)
+        # data_request = await match_db.get_data_form_emis_nat_currency_request(callback.from_user.id, number_match)
+        data_request = await DatabaseManager(database_path=number_match).get_data_form_emis_nat_currency_request(user_id=callback.from_user.id)
 
-        # TODO изменение данных заявки на отклонение, без удаления заявки и указать время отклонения
-
+        await DatabaseManager(database_path=number_match).register_currency_emission_in_match(data_request=data_request, result_verify=False)
 
         await result_of_admin_decision_for_request_emis_nat_currency(callback, number_match, data_request)
     except Exception as error:
