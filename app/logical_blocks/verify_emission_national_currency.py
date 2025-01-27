@@ -90,9 +90,9 @@ async def confirm_request_form_emis_nat_currency_by_admin(callback: CallbackQuer
         await DatabaseManager(database_path=number_match).register_currency_emission_in_match(
             data_request=data_request
         )
-        await DatabaseManager(database_path=number_match).initialize_currency_capitals_for_country(
+        await DatabaseManager(database_path=number_match).set_national_currency_in_currency_capitals(
             user_id=telegram_id_user,
-            number_match=number_match
+            number_match=number_match,
         )
 
         chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()

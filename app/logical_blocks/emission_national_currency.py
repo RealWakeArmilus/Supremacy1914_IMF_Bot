@@ -1,6 +1,5 @@
 from datetime import datetime
 import pytz
-import logging
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
@@ -12,11 +11,9 @@ from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.emission_national_currency as kb
 from app.keyboards.universal import launch_solution, verify_request_by_admin
-from app.message_designer.formatzer import format_large_number
+from app.message_designer.formatzer import format_number
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
-
-logger = logging.getLogger(__name__)
 
 
 # Router setup
@@ -63,7 +60,8 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
             await update_state(state, number_match=number_match)
 
             data_country = await DatabaseManager(database_path=number_match).get_data_country(
-                user_id=callback.from_user.id,number_match=number_match
+                user_id=callback.from_user.id,
+                number_match=number_match
             )
 
             if not data_country:
@@ -80,7 +78,7 @@ async def start_emission_national_currency(callback: CallbackQuery, state: FSMCo
                 '<i>Правила названия валюты:</i>\n'
                 '<blockquote>'
                 '1. Не менее 3-х символов\n'
-                '2. Не более 12-ти символов\n'
+                '2. Не более 20-ти символов\n'
                 '3. Русскими или английскими буквами\n'
                 '4. Исключить числовые значения и знаки\n'
                 '5. Исключить матерные слова.'
@@ -101,8 +99,16 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
     """
     try:
         input_name_currency = message.text.strip().lower()
-        if not input_name_currency.isalpha() or not (3 <= len(input_name_currency) <= 12):
-            raise ValueError('Название валюты должно быть от 3 до 8 символов и содержать только буквы.')
+        input_name_currency = input_name_currency.capitalize()
+        print(f'input_name_currency: {input_name_currency}')
+        print(f'len(input_name_currency): {len(input_name_currency)}')
+
+        if len(input_name_currency) < 3:
+            raise ValueError(f'Название валюты должно быть от 3 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
+        elif len(input_name_currency) > 20:
+            raise ValueError(f'Название валюты должно быть до 20 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
+        if input_name_currency.isalpha():
+            raise ValueError('Название валюты должно содержать только буквы.')
 
         data_currency_emission_request = await state.get_data()
         number_match = data_currency_emission_request['number_match']
@@ -150,7 +156,7 @@ async def input_following_resource_for_emission_national_currency(message: Messa
     try:
         input_tick_currency = message.text.strip().upper()
         if not input_tick_currency.isalpha() or (len(input_tick_currency) != 3):
-            raise Exception('Тикер валюты должен содержать ровно 3 буквы.')
+            raise Exception('Тикер валюты должен быть ровно 3 буквы и не содержать цифр и русского алфавита.')
 
         data_currency_emission_request = await state.get_data()
         data_country = data_currency_emission_request['data_country']
@@ -242,7 +248,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
             "<blockquote>"
             "Это самый первый выпуск ваших денежных единиц. Когда вы вводите свою валюту в обращение.\n"
             "</blockquote>\n"
-            f"<b>Стартовый курс вашей валюты:</b> {format_large_number(data_currency_emission_request['course_following'])}\n\n"
+            f"<b>Стартовый курс вашей валюты:</b> {format_number(data_currency_emission_request['course_following'])}\n\n"
             "<b>Введите сумму сколько вы готовы внести серебра для обеспечения вашей стартовой эмиссии нац. валюты:</b>\n"
             "<i>Правила введения суммы серебра:</i>\n"
             "<blockquote>"
@@ -297,9 +303,9 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
         name_currency = data_request_emission_national_currency['name_currency']
         tick_currency = data_request_emission_national_currency['tick_currency']
         following_resource = data_request_emission_national_currency['following_resource']
-        course_following = format_large_number(data_request_emission_national_currency['course_following'])
-        amount_emission_currency = format_large_number(data_request_emission_national_currency['amount_emission_currency'])
-        capitalization = format_large_number(data_request_emission_national_currency['capitalization'])
+        course_following = format_number(data_request_emission_national_currency['course_following'])
+        amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
+        capitalization = format_number(data_request_emission_national_currency['capitalization'])
 
         rough_draft_message = (
             f'<b>№ матча:</b> {number_match}\n'
@@ -346,9 +352,9 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
     name_currency = data_request_emission_national_currency['name_currency']
     tick_currency = data_request_emission_national_currency['tick_currency']
     following_resource = data_request_emission_national_currency['following_resource']
-    course_following = format_large_number(data_request_emission_national_currency['course_following'])
-    amount_emission_currency = format_large_number(data_request_emission_national_currency['amount_emission_currency'])
-    capitalization = format_large_number(data_request_emission_national_currency['capitalization'])
+    course_following = format_number(data_request_emission_national_currency['course_following'])
+    amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
+    capitalization = format_number(data_request_emission_national_currency['capitalization'])
 
 
     instructions = (
@@ -396,7 +402,7 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
             "5. Содержит ли тикер валюты русские буквы или символьные дефекты\n"
             f"6. Объем эмиссии соответствует капитализации, по курсу {course_following} ед. == 1 серебро\n"
         f"</blockquote>"
-        f"\n\nПеред тем как одобрить или отклонить запрос дожитесь перевода {capitalization} серебра"
+        f"\n\nПеред тем как одобрить или отклонить запрос дождитесь перевода {capitalization} серебра"
     )
 
     keyboard = await verify_request_by_admin(
@@ -413,7 +419,6 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
     )
 
     await DatabaseManager(database_path=number_match).save_currency_emission_request(data_request=data_request_emission_national_currency, message_id_delete=send_admin_message.message_id)
-
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))

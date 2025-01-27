@@ -1,4 +1,4 @@
-def format_large_number(number):
+def format_number(number) -> str:
     """
     Форматирует большое число, разделяя разряды пробелами.
 
@@ -6,13 +6,9 @@ def format_large_number(number):
     :return: Строка с отформатированным числом.
     """
     if not isinstance(number, (int, float)):
-        raise ValueError("Input must be an integer or float.")
+        raise ValueError("Input must be an int or float.")
 
     # Разделяем целую и дробную части (если число float)
-    if isinstance(number, float):
-        integer_part, decimal_part = str(number).split('.')
-        formatted_integer = f"{int(integer_part):,}".replace(",", " ")
-        return f"{formatted_integer}.{decimal_part}"
-    else:
-        # Для целых чисел
-        return f"{number:,}".replace(",", " ")
+    integer_part, _, decimal_part = f"{number}".partition(".")
+    formatted_integer = f"{int(integer_part):,}".replace(",", " ")
+    return f"{formatted_integer}.{decimal_part}" if decimal_part else formatted_integer

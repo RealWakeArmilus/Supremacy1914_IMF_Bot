@@ -23,6 +23,31 @@ COUNTRIES_BY_TYPE_MATCH = {
         "Россия", "Румыния", "Северная канада", "Северная россия", "Северные США",
         "Франция", "Центральные США", "Швеция", "Южная канада", "Южные США"
     ],
+    'Мир в огне': [
+        "Амер. филлипины", "Баффин", "Боливия", "Брит. Бирма", "Брит. Канада",
+        "Брит. Бенгал. залив", "Брит. Пакистан", "Венесуэла", "Голланд. Индонезия",
+        "Голланд. Ост-Индия", "Датская Гренланд.", "Китайский Тибет", "Колумбия",
+        "Нидерл. Новая Гвинея", "Объедин. Латин. гос.", "Онтарио", "Папуа. Новая Гвинея",
+        "Перу", "Португ. Ангола", "Португ. Мозамбик", "Революц. Мексика",
+        "Респ. Аргентина", "Респ. Пиратини", "Северные Тер-рии", "Федерат. Малайские гос.",
+        "Филл. Респ. Моро", "Чили", "Эквадор", "Астралия", "Англо-египетский Судан",
+        "Аравия", "Аргентина", "Архангельск", "Бельгийское Конго", "Брит. Восточ. Африка",
+        "Брит. Колумбия", "Брит. Нигерия", "Брит. Новая Зеландия", "Брит. Египет",
+        "Брит. Мадрас", "Герм. Империя", "Герм. Намибия", "Герм. Танзания", "Герм. Камерун",
+        "гос. Украина", "Греция", "Дальневост. Респ.", "Запад. Австралия",
+        "Индокитай. Союз", "Ирландия", "Испания", "Италия", "Итал. Ливия",
+        "Калифорн. Респ.", "Канада", "Китай", "Китайская Импер.", "Китайская Респ.",
+        "Китайская Синцзян", "Комм. Россия", "Корейская Импер.",
+        "Корол. Англия", "Корол. Венгрия", "Корол. Хиджаз", "Кубан. Народ. Респ.",
+        "Маньчжурия", "Мексика", "Монголия", "Новый Южный Уэльс", "Норвегия",
+        "Осман. Импер.", "Персия", "Польша", "Респ. Верхняя Вольта",
+        "Респ. Кариб. острова", "Росс. Империя", "Росс. Финляндия",
+        "Росс. Казахстан", "Росс. Туркестан", "Русская Аляска", "Северная Родозия",
+        "Сибирь", "США", "Союз. Штаты Бразилии", "ФША", "Франция",
+        "Франц. Запад. Африка", "Франц. Экватор. Африка", "Франц. Алжир",
+        "Франц. Мадагаскар", "Франц. Марокко", "Шаньси", "Швеция", "Шотландия",
+        "Эфиопия", "Южноафр. Союз", "Якутия", "Японская Импер."
+    ]
     # Добавьте другие типы матчей по мере необходимости
 }
 
@@ -164,30 +189,6 @@ class DatabaseManager:
         return [match['number'] for match in matches]
 
 
-    async def set_country_names(self, type_match):
-        """Добавляет список стран в таблицу countries"""
-        country_names = get_country_names(type_match)
-        for name_country in country_names:
-            await self.insert(
-                table_name='countries',
-                columns=['name', 'admin'],
-                values=(name_country, False)
-            )
-
-    async def get_free_country_names(self):
-        """Возвращает список свободных стран из таблицы countries"""
-        data_number_match = await self.select(
-            table_name='countries',
-            columns=['name', 'telegram_id']
-        )
-        countries_from_match = list()
-        for data_country in data_number_match:
-            if data_country['telegram_id'] is None:
-                countries_from_match.append(data_country['name'])
-
-        return countries_from_match
-
-
     async def initialize_master(self):
         """Инициализирует базу данных master.db и таблицы в ней [users, match]"""
         tables = {
@@ -263,39 +264,126 @@ class DatabaseManager:
                 columns=columns
             )
 
-        # Добавление стран
         await self.set_country_names(type_match=type_match)
 
-    async def initialize_currency_capitals_for_country(self, user_id: int, number_match: str):
+        await self.initialize_currency_capitals(type_match=type_match)
+
+    async def initialize_currency_capitals(self, type_match: str):
         """
-        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+        Создание таблицы в базе данных конкретного матча, где хранятся данные капиталов всех государств, во всех валютах.
 
-        :param user_id: message. from_user. id | callback. from_user. id
-        :param number_match: – number match
+        :param type_match: Тип матча
+        :return:
         """
-        data_country = await self.get_data_country(
-            user_id=user_id,
-            number_match=number_match
-        )
-        data_currency = await self.get_data_currency(
-            data_country=data_country,
-            number_match=number_match
+        countries_id = {'currency_id': 'INTEGER'}
+
+        country_names = get_country_names(type_match)
+        count_country_id = len(country_names)
+
+        for country_id in range(1, count_country_id + 1):
+            countries_id['country_' + str(country_id)] = 'REAL'
+
+        await self.create(
+            table_name='currency_capitals',
+            columns=countries_id
         )
 
-        tables = {
-            f'currency_capitals_{data_country['country_id']}': {
-                'currency_id': 'INTEGER',
-                'amount': 'REAL'
-            }
-        }
 
-        for table_name, columns in tables.items():
-            await self.create(
-                table_name=table_name,
-                columns=columns
+    async def set_country_names(self, type_match):
+        """Добавляет список стран в таблицу countries"""
+        country_names = get_country_names(type_match)
+        for name_country in country_names:
+            await self.insert(
+                table_name='countries',
+                columns=['name', 'admin'],
+                values=(name_country, False)
             )
 
-        await self.set_capital_national_currency(data_currency=data_currency['currency'][0])
+    async def get_country_names(self, free: bool = False, busy: bool = False):
+        """
+        Возвращает список стран из таблицы countries
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param free: Возвращает свободные государства
+        :param busy: Возвращает занятые государства
+        """
+        data_countries = await self.select(
+            table_name='countries',
+            columns=['name', 'telegram_id']
+        )
+
+        countries_from_match = list()
+
+        for data_country in data_countries:
+            if (free == True) and (data_country['telegram_id'] is None):
+                countries_from_match.append(data_country['name'])
+            elif (busy == True) and data_country['telegram_id']:
+                countries_from_match.append(data_country['name'])
+
+        return countries_from_match
+
+    async def get_country_id(self, country_name: str) -> int:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param country_name: название государства, по которому ищем его id
+        :return: Возвращает id искомого государства
+        """
+        data_countries = await self.select(
+            table_name='countries',
+            columns=['id', 'name']
+        )
+
+        for data_country in data_countries:
+            if data_country['name'] == country_name:
+                return data_country['id']
+
+    async def get_country_name(self, country_id: int) -> int:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param country_id: Id государства, по которому ищем его название
+        :return: Возвращает название искомого государства
+        """
+        data_countries = await self.select(
+            table_name='countries',
+            columns=['id', 'name']
+        )
+
+        for data_country in data_countries:
+            if data_country['id'] == country_id:
+                return data_country['name']
+
+    async def get_currency_name(self, currency_id: int) -> str:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param currency_id: Id искомой валюты
+        :return: возвращает название искомой валюты
+        """
+        data_country = await self.select(
+            table_name='currency',
+            columns=['id', 'name'],
+            where_clause={'id': currency_id}
+        )
+
+        return data_country[0]['name']
+
+    async def get_currency_tick(self, currency_id: int) -> str:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param currency_id: Id искомой валюты
+        :return: возвращает Tick искомой валюты
+        """
+        data_countries = await self.select(
+            table_name='currency',
+            columns=['id', 'tick']
+        )
+
+        for data_country in data_countries:
+            if data_country['id'] == currency_id:
+                return data_country['tick']
 
 
     async def delete_match_record(self, number_match: str) -> bool:
@@ -550,7 +638,6 @@ class DatabaseManager:
         Возвращает данные по валюте государства
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
 
-
         :param data_country: match_db.get_data_country()
         :param number_match: number match
         :return: {'id','country_id','name','tick','following_resource','course_following','capitalization','emission','current_amount','current_course'}
@@ -604,7 +691,7 @@ class DatabaseManager:
 
         return data_country
 
-    async def get_data_form_emis_nat_currency_request(self, user_id: int):
+    async def get_data_form_emis_nat_currency_request(self, user_id: int) -> dict | None:
         """
         Возвращает все базовые данные заявки эмиссии валюты, конкретного государства
 
@@ -901,22 +988,106 @@ class DatabaseManager:
             )
 
 
-    async def set_capital_national_currency(self, data_currency: dict):
+    async def set_national_currency_in_currency_capitals(self, user_id: int, number_match: str):
         """
-        установка национальной валюты в таблицу капиталов валют, конкретного государства.
+        установка национальной валюты в таблицу капиталов государств.
         """
-        print(f'data_currency: {data_currency}')
+        data_country = await self.get_data_country(
+            user_id=user_id,
+            number_match=number_match
+        )
+        data_currency = await self.get_data_currency(
+            data_country=data_country,
+            number_match=number_match
+        )
 
-        country_id = data_currency['country_id']
-        currency_id = data_currency['id']
-        amount = data_currency['current_amount']
+        table_name = 'currency_capitals'
 
-        table_name = f'currency_capitals_{country_id}'
-        column_names = ['currency_id', 'amount']
-        values = (currency_id, amount)
+        country_id = 'country_' + str(data_country['country_id'])
+        column_names = ['currency_id', country_id]
+
+        currency_id = data_currency['currency'][0]['id']
+        amount_from_country_x = data_currency['currency'][0]['current_amount']
+        values = (currency_id, amount_from_country_x)
+
 
         await self.insert(
             table_name=table_name,
             columns=column_names,
             values=values
         )
+
+    @staticmethod
+    async def filter_currency_capitals(country_id: str, data_currency_capitals: list[dict]) -> list[dict]:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param country_id: id государства
+        :param data_currency_capitals: не отфильтрованный словарь в списке
+        :return: отфильтрованный словарь в списке, в котором есть данные капиталов тех валют, что больше "0"
+        """
+        country_currency_capitals = [
+            {
+                'currency_id': data_capital['currency_id'],
+                'amount': data_capital[country_id]
+            }
+            for data_capital in data_currency_capitals
+            if data_capital[country_id] is not None
+        ]
+
+        return country_currency_capitals
+
+        # country_currency_capitals = []
+        #
+        # for data_capital in data_currency_capitals:
+        #     if data_capital[country_id] is not None:
+        #         country_currency_capitals.append({
+        #             'currency_id': data_capital['currency_id'],
+        #             country_id: data_capital[country_id]
+        #         })
+        #
+        # return country_currency_capitals
+
+    async def get_data_currency_capitals_from_country(self, user_id: int, number_match: str) -> list | None:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param user_id: message.from_user.id | callback.from_user.id
+        :param number_match: Id матча
+        :return: возвращает словарь в списке, в словаре есть данные капиталов валют, которыми владеет государство, на данный момент. | None
+        """
+        data_country = await self.get_data_country(
+            user_id=user_id,
+            number_match=number_match
+        )
+
+        country_id = 'country_' + str(data_country['country_id'])
+
+        column_names = ['currency_id', country_id]
+
+        data_currency_capitals = await self.select(
+            table_name='currency_capitals',
+            columns=column_names
+        )
+
+        country_currency_capitals = await self.filter_currency_capitals(
+            country_id=country_id,
+            data_currency_capitals=data_currency_capitals
+        )
+
+        finally_country_currency_capitals = []
+
+        for currency_capital in country_currency_capitals:
+            currency_id = currency_capital['currency_id']
+            if currency_id is not None:
+                currency_name = await self.get_currency_name(currency_id=currency_id)
+                currency_capital['currency_name'] = currency_name
+                currency_tick = await self.get_currency_tick(currency_id=currency_id)
+                currency_capital['currency_tick'] = currency_tick
+            finally_country_currency_capitals.append(currency_capital)
+
+
+        if finally_country_currency_capitals:
+            return finally_country_currency_capitals
+        else:
+            return None

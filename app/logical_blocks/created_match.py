@@ -54,6 +54,8 @@ async def choice_type_match(message: Message, state: FSMContext):
         await state.update_data(number=number_match)
         await state.set_state(SG.FormCreatedMatch.type)
 
+        # keyboard = await kb.types_match()
+
         await message.answer(
             'Выберите <b>тип матча</b>:',
             reply_markup=kb.types_match,
@@ -68,7 +70,7 @@ async def choice_type_match(message: Message, state: FSMContext):
         await callback_utils.handle_exception(message, 'choice_type_match', error, '❌<b>Произошла ошибка при проверке номера матча.</b> Попробуйте позже.')
 
 
-@router.message(lambda message: message.text in ['Великая война'], SG.FormCreatedMatch.type)
+@router.message(lambda message: message.text in ['Великая война', 'Мир в огне'], SG.FormCreatedMatch.type)
 async def set_type_match(message: Message, state: FSMContext):
     """
     Saves the chosen map type and provides a summary to the user.
@@ -88,7 +90,6 @@ async def set_type_match(message: Message, state: FSMContext):
         keyboard = await launch_solution(
             launch_type='creation'
         )
-
 
         await message.answer(
             '<b>Информация матча</b>'

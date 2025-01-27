@@ -24,6 +24,11 @@ class FormCreatedMatch(StatesGroup):
     type = State()
 
 
+class FormChoiceCountry(StatesGroup):
+    number_match = State()
+    message_id_delete = State()
+
+
 class FormCurrencyEmissionRequest(StatesGroup):
     number_match = State()
     data_country = State()
@@ -38,4 +43,15 @@ class FormCurrencyEmissionRequest(StatesGroup):
     date_confirmed = State()
     message_id_delete = State()
 
+
+class FormBankTransferRequest(StatesGroup):
+    number_match = State()
+    payer_country_id = State()
+    beneficiary_country_id = State()
+    currency_id = State()
+    amount_currency_transfer = State()
+    comment = State()
+    date_request_creation = State()
+    status_cancelled = State()
+    date_cancelled = State()
 

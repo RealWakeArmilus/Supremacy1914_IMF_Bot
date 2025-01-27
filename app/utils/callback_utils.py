@@ -37,15 +37,25 @@ async def send_formatted_message(target, template, **kwargs):
 
 
 async def send_edit_message(callback: CallbackQuery, text: str, markup=None) -> int:
-    """Edit the edit message for the callback query."""
+    """
+    Edit the edit message for the callback query.
+
+    :return: message.message_id
+    """
     message = await callback.message.edit_text(text, reply_markup=markup, parse_mode="html")
 
     return message.message_id
 
 
 async def send_message(callback: CallbackQuery, text: str, markup=None):
-    """Edit the edit message for the callback query."""
-    await callback.message.answer(text, reply_markup=markup, parse_mode="html")
+    """
+    Edit the edit message for the callback query.
+
+    :return: message.message_id
+    """
+    message = await callback.message.answer(text, reply_markup=markup, parse_mode="html")
+
+    return message.message_id
 
 
 async def notify_user(callback: CallbackQuery, text: str):

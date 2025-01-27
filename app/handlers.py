@@ -15,6 +15,7 @@ import app.verify.admin as admin
 import ClassesStatesMachine.SG as SG
 from app.DatabaseWork.database import DatabaseManager
 
+
 # Для передачи сигнала в данный файл, что запуск команд идет здесь
 router = Router()
 
@@ -73,6 +74,11 @@ async def cmd_start(message: Message, state: FSMContext):
             photo_path = 'image/exemple_number_match.jpg'
             photo = FSInputFile(photo_path)
 
+            await message.answer(
+                text='Здравствуйте! Создатель этого бота: <a href="https://t.me/L_e_m_b_e_r_g_w_a_k_e">_L_e_m_</a>',
+                parse_mode='html'
+            )
+
             sent_message = await message.answer_photo(
                 photo,
                 'Выберите <b>Номер матча</b> из списка ниже.'
@@ -95,3 +101,15 @@ async def cmd_start(message: Message, state: FSMContext):
     else:
 
         pass
+
+
+@router.message(Command('send_video'))
+async def cmd_start(message: Message):
+
+    video_path = 'image/video_test.mp4'
+    video = FSInputFile(video_path)
+
+    await message.answer_video(
+        video=video,
+        caption='Описание под видео'
+    )

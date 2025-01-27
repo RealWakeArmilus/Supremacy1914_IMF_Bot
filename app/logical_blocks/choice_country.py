@@ -1,12 +1,13 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import  Message, CallbackQuery
 
-# Импортируйте модули, которые используются внутри функций
+import ClassesStatesMachine.SG as SG
+from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.choice_country as kb
 from app.keyboards.universal import verify_request_by_admin
-from app.message_designer.deletezer import delete_message_photo
+from app.message_designer.deletezer import delete_message_photo, delete_message
 from app.message_designer.randomaizer import generate_custom_random_unique_word
 from app.utils import callback_utils
 
@@ -47,21 +48,54 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
             data_country = await DatabaseManager(database_path=number_match).check_choice_country_in_match_db(user_id=callback.from_user.id)
 
             if data_country:
-                await start_country_menu(callback, number_match)
+                await start_country_menu(callback=callback, number_match=number_match)
 
             elif data_country is None:
-                free_countries = await kb.free_countries_match(f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}', number_match)
 
-                if free_countries:
-                    await callback_utils.send_message(callback,f'Выберите государство за которое играете, на карте: {number_match}.'
-                                                  '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
-                                                      markup=free_countries)
+                names_country = await DatabaseManager(database_path=number_match).get_country_names(free=True)
 
-                elif free_countries is None:
-                    await callback_utils.send_message(callback,'К сожалению в данном матче свободных государств нет.')
+                text = ''
 
-                else:
-                    raise Exception('При обработке списка свободных государств произошла неизвестная ошибка')
+                count_names = 0
+
+                for name_country in names_country:
+                    count_names += 1
+                    text += f'\n{count_names}. {name_country}'
+
+                await state.set_state(SG.FormChoiceCountry.number_match)
+                await update_state(state, number_match=number_match)
+
+                await state.set_state(SG.FormChoiceCountry.message_id_delete)
+
+                message_id = await callback_utils.send_message(callback,
+                        text=f'<b>Выберите государство за которое играете, на карте:</b> {number_match}.'
+                        '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>\n'
+                        f'{text}\n\n'
+                        f'<b>Напишите выбранное название государства, точно как указано в списке. \nБЕЗ ПОРЯДКОВОГО НОМЕРА.</b>'
+                    )
+
+                await update_state(state, message_id_delete=message_id)
+
+
+                # keyboard = await kb.free_countries_match(
+                #     input_match_hash=f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}',
+                #     number_match_db=number_match,
+                #     total_pages=10,
+                #     current_page=0
+                # )
+                #
+                # if keyboard:
+                #     await callback_utils.send_message(callback,
+                #         text=f'Выберите государство за которое играете, на карте: {number_match}.'
+                #         '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
+                #         markup=keyboard
+                #     )
+                #
+                # elif keyboard is None:
+                #     await callback_utils.send_message(callback,'К сожалению в данном матче свободных государств нет.')
+                #
+                # else:
+                #     raise Exception('При обработке списка свободных государств произошла неизвестная ошибка')
 
             else:
                 raise Exception('При обработке данных из списка государств произошла неизвестная ошибка')
@@ -75,8 +109,57 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
         await callback_utils.handle_error(callback, error, "Не удалось обработать вход в матч.")
 
 
+@router.message(SG.FormChoiceCountry.message_id_delete)
+async def input_name_country_from_number_match_for_user(message: Message, state: FSMContext):
+    """
+    Проверка введенного названия государства.
+    """
+    try:
+        input_search_name_country = message.text.strip()
+        input_search_name_country = str(input_search_name_country).lower()
+
+        form_choice_country = await state.get_data()
+        number_match = form_choice_country['number_match']
+        message_id_delete = form_choice_country['message_id_delete']
+
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
+
+        names_country = await DatabaseManager(database_path=number_match).get_country_names(free=True)
+
+        if not names_country:
+            raise ValueError("Не удалось получить список свободных государств, для сравнения с вашим введенным названием.")
+
+        input_name_country : str = ''
+
+        for name_country in names_country:
+            if name_country.lower() == input_search_name_country:
+                input_name_country = name_country
+
+        if input_name_country == '':
+            raise Exception('\nВведенное названия не найдено в списке свободных государств.\n\n<b>Повторите свой ввод еще раз</b>')
+
+        keyboard = await kb.choice_country(
+            input_match_hash=CHOICE_COUNTRY_FROM_MATCH,
+            number_match_db=number_match,
+            name_country=input_name_country
+        )
+
+        await message.answer(
+            text=f"<b>Вы выбрали государство</b>: {input_name_country}",
+            parse_mode='html',
+            reply_markup=keyboard
+        )
+
+    except (ValueError, Exception) as error:
+        await callback_utils.handle_exception(message, 'input_name_country_from_number_match_for_user', error, '❌ <b>Ошибка на этапе выбора государства, для закрепления за ним.</b>')
+
+
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{CHOICE_COUNTRY_FROM_MATCH}_'))
-async def choice_country_from_number_match_for_user(callback: CallbackQuery):
+async def end_country_from_number_match_for_user(callback: CallbackQuery):
     """
     Пользователь выбирает государство для представления в матче.
 
@@ -103,10 +186,14 @@ async def choice_country_from_number_match_for_user(callback: CallbackQuery):
                 f"Важно: не передавайте кодовое слово никому.\n"
                 f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
             f"</pre>\n"
-            "<b>Ваше кодовое слово</b>"
-            "<pre>"
-                f"{unique_word}"
-            "</pre>"
+            "<b>Ваше кодовое слово</b>\n"
+            f"<pre>"
+                f"-----------------------------------------\n"
+                f"Кодовое слово: {unique_word}\n\n"
+                f"Название государства: {name_country}\n\n"
+                f"Номер матча: {number_match}\n"
+                f"-----------------------------------------"
+            f"</pre>\n"
         )
 
         await callback_utils.send_edit_message(callback, instructions)
