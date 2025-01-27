@@ -72,7 +72,7 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
                         '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>\n'
                         f'{text}\n\n'
                         f'<b>Напишите выбранное название государства, точно как указано в списке. \nБЕЗ ПОРЯДКОВОГО НОМЕРА.</b>'
-                    )
+                )
 
                 await update_state(state, message_id_delete=message_id)
 
@@ -115,18 +115,14 @@ async def input_name_country_from_number_match_for_user(message: Message, state:
     Проверка введенного названия государства.
     """
     try:
+        # TODO очень похожий код в bank_transfer/input_name_currency_for_bank_transfer
+
         input_search_name_country = message.text.strip()
         input_search_name_country = str(input_search_name_country).lower()
 
         form_choice_country = await state.get_data()
         number_match = form_choice_country['number_match']
         message_id_delete = form_choice_country['message_id_delete']
-
-        await delete_message(
-            bot=message.bot,
-            message_chat_id=message.chat.id,
-            send_message_id=message_id_delete
-        )
 
         names_country = await DatabaseManager(database_path=number_match).get_country_names(free=True)
 
@@ -141,6 +137,14 @@ async def input_name_country_from_number_match_for_user(message: Message, state:
 
         if input_name_country == '':
             raise Exception('\nВведенное названия не найдено в списке свободных государств.\n\n<b>Повторите свой ввод еще раз</b>')
+
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
+
+
 
         keyboard = await kb.choice_country(
             input_match_hash=CHOICE_COUNTRY_FROM_MATCH,

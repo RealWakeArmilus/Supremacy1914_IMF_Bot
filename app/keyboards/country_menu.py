@@ -10,7 +10,7 @@ async def now_country_menu(number_match: str, status_emission: bool = False) -> 
         builder.add(InlineKeyboardButton(text=str('Эмиссия национальной валюты'), callback_data=f'EmissionNationalCurrency_{number_match}'))
     elif status_emission:
         builder.add(InlineKeyboardButton(text=str('Банковские переводы'), callback_data=f'BankTransfer_{number_match}'))
-        builder.add(InlineKeyboardButton(text=str('Пожаловаться'), callback_data=f'Complain_{number_match}'))
+        # builder.add(InlineKeyboardButton(text=str('Пожаловаться'), callback_data=f'Complain_{number_match}'))
 
     builder.adjust(1)
 

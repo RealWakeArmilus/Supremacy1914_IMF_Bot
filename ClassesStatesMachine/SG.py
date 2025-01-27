@@ -47,6 +47,7 @@ class FormCurrencyEmissionRequest(StatesGroup):
 class FormBankTransferRequest(StatesGroup):
     number_match = State()
     payer_country_id = State()
+    message_id_delete = State()
     beneficiary_country_id = State()
     currency_id = State()
     amount_currency_transfer = State()
