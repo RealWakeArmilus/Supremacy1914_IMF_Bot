@@ -65,7 +65,7 @@ def update_course_currency_for_all_match():
 
 async def schedule_runner():
     """Асинхронный планировщик всех задач"""
-    schedule.every(4).hours.do(update_course_currency_for_all_match)
+    schedule.every(10).seconds.do(update_course_currency_for_all_match)
 
     while True:
         schedule.run_pending()  # Запуск отложенных задач
