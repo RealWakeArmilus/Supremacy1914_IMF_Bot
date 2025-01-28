@@ -1039,6 +1039,7 @@ class DatabaseManager:
                 values=values
             )
 
+
             data_currency = {
                 'id': data_request['id'],
                 'country_id': data_request['country_id'],
