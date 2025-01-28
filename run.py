@@ -1,6 +1,8 @@
 import asyncio, logging, sys
 from app.config import bot, dp
 
+from app.scheduler import run_scheduler
+
 from app.handlers import router
 
 
@@ -17,6 +19,9 @@ def log_processing(state_status : bool):
 async def main():
     # Посредник между файлами run.py и handlers.py
     dp.include_router(router)
+
+    # Запуск планировщика
+    asyncio.create_task(run_scheduler())
 
     # Запуск бота
     await dp.start_polling(bot)

@@ -138,6 +138,38 @@ class DatabaseManager:
         ).where(where_clause).execute()
 
 
+    async def update_course_alone_currency(self, data_currency: dict):
+        """
+        Обновляет курс конкретной валюты
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param data_currency: Пример {'id': 1, 'country_id': 28, 'name': 'крон', 'tick': 'KRN', 'following_resource': 'silver', 'course_following': 1000.0, 'capitalization': 50000, 'emission': 50000000.0, 'current_amount': 50000000.0, 'current_course': 1.001}
+        """
+        currency_id = data_currency['id']
+        course_following = data_currency['course_following']
+        emission = data_currency['emission']
+        current_amount = data_currency['current_amount']
+
+        new_course = (current_amount / emission)
+        new_course = new_course * course_following
+        new_course = 1 / new_course
+        new_course = round(new_course, 9)
+
+        data_set = {
+            'current_course': new_course
+        }
+
+        where_clause = {
+            'id': currency_id
+        }
+
+        await self.update(
+            table_name='currency',
+            data_set=data_set,
+            where_clause=where_clause
+        )
+
+
     async def set_admin(self, telegram_id: int):
         """Добавляет администратора в таблицу users из master.db."""
         await self.insert(
@@ -187,6 +219,31 @@ class DatabaseManager:
             columns=['number']
         )
         return [match['number'] for match in matches]
+
+    async def get_all_data_currencies(self) -> list[dict] | None:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :return: возвращает список из словарей содержащий в себе всю информацию о каждой созданной валюте, в конкретном матче.
+        """
+        column_names = [
+            'id',
+            'country_id',
+            'name',
+            'tick',
+            'following_resource',
+            'course_following',
+            'capitalization',
+            'emission',
+            'current_amount',
+            'current_course'
+        ]
+
+        data_currencies = await self.select(
+            table_name='currency',
+            columns=column_names
+        )
+        return data_currencies
 
 
     async def initialize_master(self):
@@ -964,11 +1021,6 @@ class DatabaseManager:
                 'current_course'
             ]
 
-            current_course = (data_request['amount_emission_currency'] / data_request['amount_emission_currency'])
-            current_course = current_course * data_request['course_following']
-            current_course = 1 / current_course
-            current_course = round(current_course, 9)
-
             values = (
                 data_request['country_id'],
                 data_request['name_currency'],
@@ -978,7 +1030,7 @@ class DatabaseManager:
                 data_request['capitalization'],
                 data_request['amount_emission_currency'],
                 data_request['amount_emission_currency'],
-                current_course
+                0.0
             )
 
             await self.insert(
@@ -986,6 +1038,21 @@ class DatabaseManager:
                 columns=column_names,
                 values=values
             )
+
+            data_currency = {
+                'id': data_request['id'],
+                'country_id': data_request['country_id'],
+                'name': data_request['name_currency'],
+                'tick': data_request['tick_currency'],
+                'following_resource': data_request['following_resource'],
+                'course_following': data_request['course_following'],
+                'capitalization': data_request['capitalization'],
+                'emission': data_request['amount_emission_currency'],
+                'current_amount': data_request['amount_emission_currency'],
+                'current_course': 0.0
+            }
+
+            await self.update_course_alone_currency(data_currency=data_currency)
 
 
     async def set_national_currency_in_currency_capitals(self, user_id: int, number_match: str):

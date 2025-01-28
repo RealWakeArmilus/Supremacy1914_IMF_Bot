@@ -301,50 +301,6 @@ async def input_amount_currency_for_bank_transfer(message: Message, state: FSMCo
     except (ValueError, Exception) as error:
         await callback_utils.handle_exception(message, 'input_amount_currency_for_bank_transfer', error, '❌ <b>Ошибка на этапе выбора валюты из капитала.</b>')
 
-    #
-    # try:
-    #     data_parse = callback_utils.parse_callback_data(message.data, PREFIXES["CURRENCY"])
-    #     number_match, currency_id = data_parse[0], data_parse[1]
-    #
-    #     print(f'number_match: {number_match} \ncurrency_id: {currency_id}')
-    #
-    #     await update_state(state, currency_id=currency_id)
-    #
-    #     data_currency_capitals_from_country = await DatabaseManager(
-    #         database_path=number_match).get_data_currency_capitals_from_country(
-    #         user_id=message.from_user.id,
-    #         number_match=number_match
-    #     )
-    #
-    #     if not data_currency_capitals_from_country:
-    #         raise ValueError("Не удалось получить капитал страны.")
-    #
-    #     data_country = await DatabaseManager(database_path=number_match).get_data_country(
-    #         user_id=message.from_user.id,
-    #         number_match=number_match
-    #     )
-    #
-    #     if not data_country:
-    #         raise ValueError("Не удалось получить данные страны.")
-    #
-    #     await state.set_state(SG.FormBankTransferRequest.amount_currency_transfer)
-    #
-    #     current_data_currency = {}
-    #
-    #     for currency_capital in data_currency_capitals_from_country:
-    #         if currency_capital['currency_id'] == int(currency_id):
-    #             current_data_currency = currency_capital
-    #
-    #     await callback_utils.send_message(callback=message,
-    #              text=f'<b>№ матча:</b> {number_match}\n'
-    #              f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
-    #              f'<b>Вы располагаете:</b> {current_data_currency['amount']:,} {current_data_currency['currency_name']} ({current_data_currency['currency_tick']})\n\n'
-    #              '<b>Укажите желаемый объем перевода:</b>'
-    #     )
-    # except (ValueError, Exception) as error:
-    #     await callback_utils.handle_exception(message, 'input_amount_currency_for_bank_transfer', error, '❌ <b>Ошибка на этапе выбора валюты из капитала.</b>')
-
-
 
 @router.message(SG.FormBankTransferRequest.amount_currency_transfer)
 async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
