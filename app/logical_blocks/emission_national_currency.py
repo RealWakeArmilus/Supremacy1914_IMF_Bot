@@ -107,7 +107,7 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
             raise ValueError(f'Название валюты должно быть от 3 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
         elif len(input_name_currency) > 20:
             raise ValueError(f'Название валюты должно быть до 20 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
-        if input_name_currency.isalpha():
+        if not input_name_currency.isalpha():
             raise ValueError('Название валюты должно содержать только буквы.')
 
         data_currency_emission_request = await state.get_data()
