@@ -469,11 +469,13 @@ class DatabaseManager:
                 os.remove(database_path)
                 logger.info(f"База данных {database_path} успешно удалена.")
 
-                success = await self.delete_match_record(number_match)
+                success = await self.delete_match_record(number_match=number_match)
 
                 if not success:
 
                     return False
+
+                await self.delete_charts_from_match(number_match=number_match)
             else:
                 raise Exception(f"Файл {database_path} не найден.")
 
@@ -482,7 +484,8 @@ class DatabaseManager:
             logger.error(f"Ошибка при удалении номера матча {number_match} из таблицы match: {error}")
             return False
 
-    async def delete_charts_from_match(self, number_match: str):
+    @staticmethod
+    async def delete_charts_from_match(number_match: str):
         """Удаляет все диаграммы и графики связанные с конкретным номером матча"""
         try:
             name_directory = "chart/"
@@ -514,7 +517,6 @@ class DatabaseManager:
         :param user_id: message.from_user.id
         :return: True - есть заявка, False - нет заявка, None - если не правильный name_requests
         """
-
         try:
             if name_requests == 'country_choice':
                 column_names = ['telegram_id']

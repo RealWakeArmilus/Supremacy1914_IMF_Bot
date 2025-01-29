@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 
+
 async def create_chart_currency_capitals_from_country(number_match: str, from_name_country: str, data_currency_capitals: list) -> str:
     """
     Создание круглой диаграммы капитала валют конкретного государства

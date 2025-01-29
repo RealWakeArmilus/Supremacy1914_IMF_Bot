@@ -49,7 +49,7 @@ async def cmd_admin(message: Message):
     if status_type_user == admin.Status.TypeUser.ADMIN:
 
         await message.answer(
-            f'Здравствуйте администратор {message.from_user.full_name}.',
+            f'<b>Здравствуйте администратор:</b> {message.from_user.full_name}.',
             reply_markup=kb_handlers.admin_menu,
             parse_mode='html')
 
