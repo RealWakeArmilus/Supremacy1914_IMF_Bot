@@ -467,7 +467,7 @@ class DatabaseManager:
             if os.path.exists(database_path):
 
                 os.remove(database_path)
-                print(f"База данных {database_path} успешно удалена.")
+                logger.info(f"База данных {database_path} успешно удалена.")
 
                 success = await self.delete_match_record(number_match)
 
@@ -479,8 +479,30 @@ class DatabaseManager:
 
             return True
         except Exception as error:
-            print(f"Ошибка при удалении номера матча {number_match} из таблицы match: {error}")
+            logger.error(f"Ошибка при удалении номера матча {number_match} из таблицы match: {error}")
             return False
+
+    async def delete_charts_from_match(self, number_match: str):
+        """Удаляет все диаграммы и графики связанные с конкретным номером матча"""
+        try:
+            name_directory = "chart/"
+            if not os.path.exists(name_directory):
+                raise Exception(f"Директория {name_directory} не существует.")
+
+            count_deleted_files = 0
+            for file_name in os.listdir(name_directory):
+                file_path = os.path.join(name_directory, file_name)
+
+                # Проверяем условия: начинается с `chart/{number_match}` и заканчивается на `.png`
+                if file_name.startswith(number_match) and file_name.endswith('.png'):
+                    os.remove(file_path)
+                    count_deleted_files += 1
+                    logger.info(f"Файл {file_path} удалён.")
+
+            if count_deleted_files == 0:
+                raise Exception(f"Файлы, связанные с матчем {number_match}, не найдены.")
+        except Exception as error:
+            logger.error(f"Ошибка при удалении диаграмм для № матча {number_match}: {error}")
 
 
     async def check_requests(self, name_requests: str, user_id: int) -> bool | None:

@@ -59,8 +59,15 @@ async def start_bank_transfer(callback: CallbackQuery, state: FSMContext, number
         await update_state(state, payer_country_id=payer_country_id)
 
         names_country = await DatabaseManager(database_path=number_match).get_country_names(busy=True)
+        ignor_country_name = payer_country_name
 
-        if not names_country:
+        new_names_country = []
+
+        for name_country in names_country:
+            if name_country != ignor_country_name:
+                new_names_country.append(name_country)
+
+        if not new_names_country:
 
             await callback_utils.send_edit_message(callback,
                     text='Список бенефициаров пуст.',
@@ -69,17 +76,15 @@ async def start_bank_transfer(callback: CallbackQuery, state: FSMContext, number
             from app.logical_blocks.country_menu import start_country_menu
             await start_country_menu(callback=callback, number_match=number_match)
 
-        elif names_country:
+        elif new_names_country:
 
             list_beneficiary = ''
 
             count_names = 0
-            ignor_country_name = payer_country_name
 
-            for name_country in names_country:
-                if name_country != ignor_country_name:
-                    count_names += 1
-                    list_beneficiary += f'\n{count_names}. {name_country}'
+            for name_country in new_names_country:
+                count_names += 1
+                list_beneficiary += f'\n{count_names}. {name_country}'
 
             text_message = (
                 f'<b>№ Матч:</b> {number_match}\n'
@@ -276,6 +281,12 @@ async def input_amount_currency_for_bank_transfer(message: Message, state: FSMCo
         if not current_data_currency:
             raise ValueError("Введенное названия не найдено в списке валют вашего капитала.\n\n<b>Повторите свой ввод еще раз.</b>")
 
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
+
         await update_state(state, currency_id=current_data_currency['currency_id'])
 
         data_country = await DatabaseManager(database_path=number_match).get_data_country(
@@ -286,16 +297,18 @@ async def input_amount_currency_for_bank_transfer(message: Message, state: FSMCo
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
-        await state.set_state(SG.FormBankTransferRequest.amount_currency_transfer)
 
-
-        await message.answer(callback=message,
+        message = await message.answer(callback=message,
              text=f'<b>№ матча:</b> {number_match}\n'
              f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
              f'<b>Вы располагаете:</b> {current_data_currency['amount']:,} {current_data_currency['currency_name']} ({current_data_currency['currency_tick']})\n\n'
              '<b>Укажите желаемый объем перевода:</b>',
              parse_mode='html'
         )
+
+        await update_state(state, message_id_delete=message.message_id)
+
+        await state.set_state(SG.FormBankTransferRequest.amount_currency_transfer)
 
 
     except (ValueError, Exception) as error:
@@ -311,6 +324,7 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
         data_bank_transfer_request = await state.get_data()
         number_match = data_bank_transfer_request['number_match']
         currency_id = data_bank_transfer_request['currency_id']
+        message_id_delete = data_bank_transfer_request['message_id_delete']
 
         data_currency_capitals_from_country = await DatabaseManager(
             database_path=number_match).get_data_currency_capitals_from_country(
@@ -334,6 +348,12 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
             raise Exception('Объем перевода не может быть меньше или равно 0')
         elif amount_currency > current_data_currency['amount']:
             raise Exception('Вы не располагаете таким объемом валюты')
+
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
 
 
         await update_state(state, amount_currency_transfer=amount_currency)
