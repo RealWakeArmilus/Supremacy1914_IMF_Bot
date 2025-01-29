@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 import os
 
+
 # Загружаем переменные из .env
 load_dotenv()
 
