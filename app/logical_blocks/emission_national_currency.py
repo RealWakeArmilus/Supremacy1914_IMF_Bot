@@ -100,8 +100,8 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
     try:
         input_name_currency = message.text.strip().lower()
         input_name_currency = input_name_currency.capitalize()
-        print(f'input_name_currency: {input_name_currency}')
-        print(f'len(input_name_currency): {len(input_name_currency)}')
+        # print(f'input_name_currency: {input_name_currency}')
+        # print(f'len(input_name_currency): {len(input_name_currency)}')
 
         if len(input_name_currency) < 3:
             raise ValueError(f'Название валюты должно быть от 3 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
