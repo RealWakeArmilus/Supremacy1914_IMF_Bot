@@ -9,8 +9,8 @@ import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.bank_transfer as kb
-from app.keyboards.universal import launch_solution, verify_request_by_admin
-from app.message_designer.formatzer import format_number
+# from app.keyboards.universal import launch_solution, verify_request_by_admin
+# from app.message_designer.formatzer import format_number
 from app.message_designer.deletezer import delete_message
 from app.message_designer.chartzer import create_chart_currency_capitals_from_country
 from app.utils import callback_utils
@@ -217,6 +217,8 @@ async def input_name_currency_for_bank_transfer(message: Message, state: FSMCont
             data_currency_capitals=data_currency_capitals_from_country
         )
 
+
+
         chart_path = name_chart
         photo_chart = FSInputFile(chart_path)
 
@@ -375,6 +377,8 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
             '<b>Укажите комментарий к вашему переводу:</b>',
             parse_mode='html'
         )
+
+        await update_state(state, message_id_delete=message.message_id)
     except (ValueError, Exception) as error:
         await callback_utils.handle_exception(message, 'input_comment_for_bank_transfer', error, '❌ <b>Ошибка на этапе выбора объема перевода.</b>')
 
@@ -444,10 +448,11 @@ async def end_bank_transfer(message: Message, state: FSMContext):
             '</blockquote>'
         )
 
-        await message.answer(
+        sent_message = await message.answer(
             text=rough_draft_message,
             parse_mode='html'
         )
+
 
 
     except (ValueError, Exception) as error:

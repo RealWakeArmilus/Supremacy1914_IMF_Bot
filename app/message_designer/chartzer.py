@@ -46,6 +46,8 @@ async def create_chart_currency_capitals_from_country(number_match: str, from_na
     ax.axis('equal')
     plt.tight_layout()
 
+    from_name_country = from_name_country.replace(" ", "_")
+
     name_chart = f'chart/{number_match}_{from_name_country}.png'
 
     plt.savefig(name_chart)
