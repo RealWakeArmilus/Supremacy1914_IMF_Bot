@@ -33,7 +33,7 @@ async def send_formatted_message(target, template, **kwargs):
     if isinstance(target, CallbackQuery):
         await send_edit_message(target, message)
     elif isinstance(target, Message):
-        await target.answer(message, parse_mode="html")
+        await target.edit_text(message, parse_mode="html")
 
 
 async def send_edit_message(callback: CallbackQuery, text: str, markup=None) -> int:

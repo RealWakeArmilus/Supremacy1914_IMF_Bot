@@ -1,5 +1,6 @@
 from datetime import datetime
 import pytz
+import logging
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
@@ -8,8 +9,8 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
-import app.keyboards.bank_transfer as kb
-# from app.keyboards.universal import launch_solution, verify_request_by_admin
+# import app.keyboards.bank_transfer as kb
+from app.keyboards.universal import launch_solution
 # from app.message_designer.formatzer import format_number
 from app.message_designer.deletezer import delete_message
 from app.message_designer.chartzer import create_chart_currency_capitals_from_country
@@ -20,12 +21,15 @@ from app.utils import callback_utils
 router = Router()
 
 
+logger = logging.getLogger(__name__)
+
+
 # Callback prefixes
 PREFIXES = {
     "START": "StartBankTransfer",
     "BENEFICIARY": "BeneficiaryBankTransfer",
-    "CURRENCY": "CurrencyBankTransfer",
-    "RESTART": "RestartBankTransfer",
+    "CONFIRM": "ConfirmFormBankTransfer",
+    "RESTART": "RestartFormBankTransfer",
 }
 
 
@@ -104,31 +108,6 @@ async def start_bank_transfer(callback: CallbackQuery, state: FSMContext, number
 
         else:
             raise Exception('Что-то пошло не так.')
-
-        # keyboard = await kb.busy_countries_match(
-        #     ignor_country_name=payer_country_name,
-        #     input_match_hash=f'{PREFIXES["BENEFICIARY"]}',
-        #     number_match_db=number_match
-        # )
-        #
-        # if not keyboard:
-        #     await callback_utils.send_edit_message(callback,
-        #         text='Список бенефициаров пуст.',
-        #     )
-        #
-        #     from app.logical_blocks.country_menu import start_country_menu
-        #     await start_country_menu(callback=callback, number_match=number_match)
-        #
-        # elif keyboard:
-        #     await state.set_state(SG.FormBankTransferRequest.beneficiary_country_id)
-        #
-        #     await callback_utils.send_edit_message(callback,
-        #         text='Выберите государство, которому хотите перевести средства.',
-        #         markup=keyboard
-        #     )
-        # else:
-        #     raise Exception('Что-то пошло не так.')
-
     except Exception as error:
         await callback_utils.handle_exception(callback, 'start_bank_transfer', error)
 
@@ -222,12 +201,6 @@ async def input_name_currency_for_bank_transfer(message: Message, state: FSMCont
         chart_path = name_chart
         photo_chart = FSInputFile(chart_path)
 
-        # keyboard = await kb.get_currencies_capitals_from_country(
-        #     data_currency_capitals_from_country=data_currency_capitals_from_country,
-        #     input_match_hash=f'{PREFIXES["CURRENCY"]}',
-        #     number_match_db=number_match
-        # )
-
         message = await message.answer_photo(
             photo=photo_chart,
             caption=text,
@@ -270,14 +243,10 @@ async def input_amount_currency_for_bank_transfer(message: Message, state: FSMCo
         if not data_currency_capitals_from_country:
             raise ValueError("Не удалось получить капитал страны.")
 
-        print(f'input_search_currency_name: {input_search_currency_name}')
-
-        print(f'data_currency_capitals_from_country: {data_currency_capitals_from_country}')
-
         current_data_currency = {}
 
         for currency_capital in data_currency_capitals_from_country:
-            if currency_capital['currency_name'] == str(input_search_currency_name):
+            if str(currency_capital['currency_name']).lower() == str(input_search_currency_name):
                 current_data_currency = currency_capital
 
         if not current_data_currency:
@@ -390,14 +359,15 @@ async def end_bank_transfer(message: Message, state: FSMContext):
     """
     try:
         input_comment = message.text.strip().lower()
-        if (len(input_comment) < 15) or (len(input_comment) > 70):
+        if (len(input_comment) < 10) or (len(input_comment) > 70):
             raise Exception(
-                "\nКомментарий должен содержать не менее 15 и не более 70 символов.\n\n"
+                "\nКомментарий должен содержать не менее 10 и не более 70 символов.\n\n"
                 "<b>Вот примеры комментариев длиной 70 символов:</b>"
                 "<blockquote>"
                     "1. 2000 зерна, цена 5000. Сумма сделки: 10 млн долларов.\n"
                     "2. Покупка Смоленска за 50 млн франков.\n"
                     "3. Вклад на сумму 140 млн марок.\n"
+                    "4. Тестовый перевод."
                 "</blockquote>"
             )
 
@@ -418,7 +388,6 @@ async def end_bank_transfer(message: Message, state: FSMContext):
 
         data_bank_transfer_request = await state.get_data()
 
-        print(f'data_bank_transfer_request: {data_bank_transfer_request}')
         number_match = data_bank_transfer_request['number_match']
         payer_country_id = data_bank_transfer_request['payer_country_id']
         beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
@@ -426,8 +395,13 @@ async def end_bank_transfer(message: Message, state: FSMContext):
         amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
         comment = data_bank_transfer_request['comment']
         date_request_creation = data_bank_transfer_request['date_request_creation']
-        status_cancelled = data_bank_transfer_request['status_cancelled']
-        date_cancelled = data_bank_transfer_request['date_cancelled']
+        message_id_delete = data_bank_transfer_request['message_id_delete']
+
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
 
         payer_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=payer_country_id)
         beneficiary_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=beneficiary_country_id)
@@ -448,22 +422,134 @@ async def end_bank_transfer(message: Message, state: FSMContext):
             '</blockquote>'
         )
 
+        keyboard = await launch_solution(
+            launch_type='FormBankTransfer',
+            number_match=number_match
+        )
+
         sent_message = await message.answer(
             text=rough_draft_message,
+            reply_markup=keyboard,
             parse_mode='html'
         )
 
-
-
+        await update_state(state, message_id_delete=sent_message.message_id)
     except (ValueError, Exception) as error:
         await callback_utils.handle_exception(message, 'end_bank_transfer', error, '❌ <b>Ошибка на этапе комментария.</b>')
 
 
+@router.callback_query(F.data == PREFIXES['CONFIRM'])
+async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext):
+    """
+    Подтверждение заполненной формы эмиссии национальной валюты.
+    """
+    data_bank_transfer_request = await state.get_data()
+
+    number_match = data_bank_transfer_request['number_match']
+    payer_country_id = data_bank_transfer_request['payer_country_id']
+    beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
+    currency_id = data_bank_transfer_request['currency_id']
+    amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
+    comment = data_bank_transfer_request['comment']
+    date_request_creation = data_bank_transfer_request['date_request_creation']
+    status_cancelled = data_bank_transfer_request['status_cancelled']
+    date_cancelled = data_bank_transfer_request['date_cancelled']
+    message_id_delete = data_bank_transfer_request['message_id_delete']
+
+    await delete_message(
+        bot=callback.bot,
+        message_chat_id=callback.message.chat.id,
+        send_message_id=message_id_delete
+    )
+
+    await DatabaseManager(database_path=number_match).register_bank_transfer(
+        number_match=number_match,
+        payer_country_id=payer_country_id,
+        beneficiary_country_id=beneficiary_country_id,
+        currency_id=currency_id,
+        amount_currency_transfer=amount_currency_transfer,
+        comment=comment,
+        date_request_creation=date_request_creation,
+        status_cancelled=status_cancelled,
+        date_cancelled=date_cancelled
+    )
+
+    await state.clear()
+
+    data_bank_transfer_request = await DatabaseManager(database_path=number_match).get_bank_transfer(
+        payer_country_id=payer_country_id,
+        date_request_creation=date_request_creation
+    )
+
+    logger.info(f'data_bank_transfer_request from get_bank_transfer: {data_bank_transfer_request}')
+
+    await DatabaseManager(database_path=number_match).execution_bank_transfer(
+        data_bank_transfer_request=data_bank_transfer_request
+    )
+
+    payer_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['payer_country_id'])
+    beneficiary_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['beneficiary_country_id'])
+    currency_name = await DatabaseManager(database_path=number_match).get_currency_name(currency_id=data_bank_transfer_request['currency_id'])
+
+    try:
+        status_payer = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
+            number_match=number_match,
+            country_id=payer_country_id,
+            currency_id=currency_id,
+            currency_name=currency_name,
+            amount_currency_transfer=amount_currency_transfer,
+            payer=True
+        )
+
+        if not status_payer:
+            status_beneficiary = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
+                number_match=number_match,
+                country_id=beneficiary_country_id,
+                currency_id=currency_id,
+                currency_name=currency_name,
+                amount_currency_transfer=amount_currency_transfer,
+                beneficiary=True
+            )
+
+            if not status_beneficiary:
+                logger.info('payer и beneficiary не являются эмитентами искомой валюты')
+            elif status_beneficiary is None:
+                raise Exception('Данные beneficiary при подтверждении эмитента по банковскому переводу пусты!')
+        elif status_payer is None:
+            raise Exception('Данные payer при подтверждении эмитента по банковскому переводу пусты!')
+    except Exception as error:
+        logger.error(f'Ошибка в confirm_form_bank_transfer: {error}')
+
+    finally_message_bank_transfer = (
+        f'<b>№ Банковского перевода: {data_bank_transfer_request['id']}</b>\n'
+        f'<b>Статус:</b> Успешно✅\n\n'
+        f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
+        f'<b>Ваше государство:</b> {payer_country_name}\n'
+        f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
+        '<i>Проверьте правильно ли заполнены данные, по вашему переводу:</i>'
+        '<blockquote>'
+            f"<b>Матч:</b> {data_bank_transfer_request['number_match']}\n"
+            f"<b>Отправитель:</b> {payer_country_name}\n"
+            f"<b>Получатель:</b> {beneficiary_country_name}\n"
+            f"<b>Название валюты:</b> {currency_name}\n"
+            f"<b>Объем перевода:</b> {data_bank_transfer_request['amount_currency_transfer']}\n"
+            f"<b>Комментарий:</b> {data_bank_transfer_request['comment']}\n"
+        '</blockquote>'
+    )
+
+    await callback_utils.send_message(callback=callback,
+        text=finally_message_bank_transfer,
+    )
 
 
-
-
-
-
-
-
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))
+async def restart_form_bank_transfer(callback: CallbackQuery, state: FSMContext):
+    """
+    Перезапуск процесса заполнения формы эмиссии национальной валюты.
+    """
+    try:
+        number_match = callback_utils.parse_callback_data(callback.data, PREFIXES["RESTART"])[0]
+        await state.clear()
+        await start_bank_transfer(callback, state, number_match)
+    except Exception as error:
+        await callback_utils.handle_exception(callback, 'restart_form_emission_national_currency', error, '❌ <b>Не удалось перезапустить форму.</b>')

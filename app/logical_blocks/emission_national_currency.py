@@ -35,6 +35,36 @@ PREFIXES = {
     "RESTART": "RestartFormEmissionNatCurrency",
 }
 
+import re
+
+
+def check_text_validity(search_input, string:bool = False, string_latin:bool = False, integer:bool = False, float_status:bool = False) -> bool | None:
+    """
+    Проверяет, содержит ли введённый текст только буквы и пробелы.
+
+    :param float_status: Только float
+    :param integer: Только int
+    :param string: Только str (латин. и кирилл.)
+    :param string_latin: Только str (латин.)
+    :param search_input: Входная строка
+    :return: True, если текст допустим, иначе False
+    """
+    search_input = str(search_input)
+    pattern: str | int | float | None = None
+
+    if string:
+        pattern = r'^[A-Za-zА-Яа-яЁё\s]+$'
+    elif integer:
+        pattern = r'^\d+$'
+    elif float_status:
+        pattern = r'^\d+(\.\d+)?$'
+    elif string_latin:
+        pattern = r'^[A-Za-z\s]+$'
+
+    return bool(re.fullmatch(pattern, search_input))
+
+
+
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["START"]}_'))
 async def start_emission_national_currency(callback: CallbackQuery, state: FSMContext, number_match: str = None):
@@ -103,12 +133,16 @@ async def input_tick_for_emission_national_currency(message: Message, state: FSM
         # print(f'input_name_currency: {input_name_currency}')
         # print(f'len(input_name_currency): {len(input_name_currency)}')
 
-        if len(input_name_currency) < 3:
-            raise ValueError(f'Название валюты должно быть от 3 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
+        if len(input_name_currency) <= 3:
+            raise ValueError(f'Название валюты должно быть больше 3 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
         elif len(input_name_currency) > 20:
             raise ValueError(f'Название валюты должно быть до 20 символов и содержать только буквы.\nДлина вашего названия {len(input_name_currency)}')
-        if not input_name_currency.isalpha():
-            raise ValueError('Название валюты должно содержать только буквы.')
+        elif not check_text_validity(
+            search_input=input_name_currency,
+            string=True
+        ):
+            raise TypeError("Название валюты должно содержать только буквы.")
+
 
         data_currency_emission_request = await state.get_data()
         number_match = data_currency_emission_request['number_match']
@@ -155,8 +189,13 @@ async def input_following_resource_for_emission_national_currency(message: Messa
     """
     try:
         input_tick_currency = message.text.strip().upper()
-        if not input_tick_currency.isalpha() or (len(input_tick_currency) != 3):
-            raise Exception('Тикер валюты должен быть ровно 3 буквы и не содержать цифр и русского алфавита.')
+        if len(input_tick_currency) != 3:
+            raise Exception('Тикер валюты должен быть ровно 3 буквы')
+        elif not check_text_validity(
+            search_input=input_tick_currency,
+            string_latin=True
+        ):
+            raise TypeError("Тикер валюты должен содержать только буквы и не содержать цифр и русского алфавита.")
 
         data_currency_emission_request = await state.get_data()
         data_country = data_currency_emission_request['data_country']
@@ -230,8 +269,13 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
 
     try:
         course_following = round(float(course_following_input), 2)
-        if not course_following.is_integer() and (course_following < 1000.00) or (course_following > 100000.00):
+        if (course_following < 1000.00) or (course_following > 100000.00):
             raise ValueError('Соотношение между вашей валютой и закрепленного ресурса, должен быть не меньше 1 000,00 и не больше 100 000,00')
+        elif not check_text_validity(
+            search_input=course_following_input,
+            float_status=True
+        ):
+            raise ValueError('Вы должны указать число от 1.000 до 100.000, без букв.')
 
         await update_state(state, course_following=course_following)
 
@@ -266,13 +310,18 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
 async def end_emission_national_currency(message: Message, state: FSMContext):
 
     try:
-        input_capitalization = message.text.strip()
+        input_capitalization = message.text
         capitalization = int(input_capitalization)
 
         if capitalization < 50000:
             raise Exception('Объем обеспечения валюты слишком мал. Минимальный порог эмиссии 50 000 серебра.')
         elif capitalization > 500000:
             raise Exception('Объем обеспечения валюты выставлен не реалистично много.')
+        elif not check_text_validity(
+            search_input=capitalization,
+            integer=True
+        ):
+            raise ValueError('Вы должны указать целое число от 50.000 до 500.000, без букв.')
 
         await update_state(state, capitalization=capitalization)
 
@@ -419,6 +468,8 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
     )
 
     await DatabaseManager(database_path=number_match).save_currency_emission_request(data_request=data_request_emission_national_currency, message_id_delete=send_admin_message.message_id)
+
+    await state.clear()
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))

@@ -110,13 +110,11 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
 
 
 @router.message(SG.FormChoiceCountry.message_id_delete)
-async def input_name_country_from_number_match_for_user(message: Message, state: FSMContext):
+async def end_country_from_number_match_for_user(message: Message, state: FSMContext):
     """
-    Проверка введенного названия государства.
+    Проверка названия государства, и вывод заявки в чат админа для решения на заявку.
     """
     try:
-        # TODO очень похожий код в bank_transfer/input_name_currency_for_bank_transfer
-
         input_search_name_country = message.text.strip()
         input_search_name_country = str(input_search_name_country).lower()
 
@@ -129,14 +127,15 @@ async def input_name_country_from_number_match_for_user(message: Message, state:
         if not names_country:
             raise ValueError("Не удалось получить список свободных государств, для сравнения с вашим введенным названием.")
 
-        input_name_country : str = ''
+        input_name_country: str = ''
 
         for name_country in names_country:
             if name_country.lower() == input_search_name_country:
                 input_name_country = name_country
 
         if input_name_country == '':
-            raise Exception('\nВведенное названия не найдено в списке свободных государств.\n\n<b>Повторите свой ввод еще раз</b>')
+            raise Exception(
+                '\nВведенное названия не найдено в списке свободных государств.\n\n<b>Повторите свой ввод еще раз</b>')
 
         await delete_message(
             bot=message.bot,
@@ -146,68 +145,44 @@ async def input_name_country_from_number_match_for_user(message: Message, state:
 
 
 
-        keyboard = await kb.choice_country(
-            input_match_hash=CHOICE_COUNTRY_FROM_MATCH,
-            number_match_db=number_match,
-            name_country=input_name_country
-        )
-
-        await message.answer(
-            text=f"<b>Вы выбрали государство</b>: {input_name_country}",
-            parse_mode='html',
-            reply_markup=keyboard
-        )
-
-    except (ValueError, Exception) as error:
-        await callback_utils.handle_exception(message, 'input_name_country_from_number_match_for_user', error, '❌ <b>Ошибка на этапе выбора государства, для закрепления за ним.</b>')
-
-
-@router.callback_query(lambda c: c.data and c.data.startswith(f'{CHOICE_COUNTRY_FROM_MATCH}_'))
-async def end_country_from_number_match_for_user(callback: CallbackQuery):
-    """
-    Пользователь выбирает государство для представления в матче.
-
-    :param callback: CallbackQuery
-    """
-    try:
-        data_parts = callback_utils.parse_callback_data(callback.data, CHOICE_COUNTRY_FROM_MATCH)
-        number_match, name_country = data_parts[0], data_parts[1]
-
-        await callback_utils.notify_user(callback, f"Вы выбрали государство: {name_country}")
-        await callback_utils.send_edit_message(callback, 'Обработка...')
+        processing_message = await message.answer('Обработка...')
 
         unique_word = generate_custom_random_unique_word()
 
         instructions = (
+            f"<b>Вы выбрали государство:</b> {input_name_country}\n\n"
             f"<b>Следуйте этой инструкции, для подтверждения вашей заявки:</b>\n"
             f"<pre>"
-                f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
-                f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
-                f"3. Отправьте ему кодовое слово;\n"
-                f"4. Ожидайте подтверждения вашей заявки.\n"
+            f"1. Откройте Supremacy1914 и войдите в матч под номером: {number_match};\n"
+            f"2. Найдите игрока 'Company Mekas' (он же 'International Monetary Fund');\n"
+            f"3. Отправьте ему кодовое слово;\n"
+            f"4. Ожидайте подтверждения вашей заявки.\n"
             f"</pre>\n"
             f"<pre>"
-                f"Важно: не передавайте кодовое слово никому.\n"
-                f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
+            f"Важно: не передавайте кодовое слово никому.\n"
+            f"Это гарантирует вашу подлинность при выборе государства в матче.\n"
             f"</pre>\n"
             "<b>Ваше кодовое слово</b>\n"
             f"<pre>"
-                f"-----------------------------------------\n"
-                f"Кодовое слово: {unique_word}\n\n"
-                f"Название государства: {name_country}\n\n"
-                f"Номер матча: {number_match}\n"
-                f"-----------------------------------------"
+            f"-----------------------------------------\n"
+            f"Кодовое слово: {unique_word}\n\n"
+            f"Название государства: {input_name_country}\n\n"
+            f"Номер матча: {number_match}\n"
+            f"-----------------------------------------"
             f"</pre>\n"
         )
 
-        await callback_utils.send_edit_message(callback, instructions)
+        await processing_message.edit_text(
+            text=instructions,
+            parse_mode='html'
+        )
 
         chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
 
         admin_message = (
             f"<b>Запрос на выбор государства</b>\n"
             f"<b>Матч:</b> {number_match}\n"
-            f"<b>Государство:</b> {name_country}\n"
+            f"<b>Государство:</b> {input_name_country}\n"
             f"<b>Кодовое слово:</b> {unique_word}"
         )
 
@@ -217,7 +192,7 @@ async def end_country_from_number_match_for_user(callback: CallbackQuery):
             unique_word=unique_word
         )
 
-        admin_decision_message = await callback.bot.send_message(
+        admin_decision_message = await message.bot.send_message(
             chat_id=chat_id_admin,
             text=admin_message,
             reply_markup=keyboard,
@@ -226,11 +201,11 @@ async def end_country_from_number_match_for_user(callback: CallbackQuery):
 
         # save chat_id user and data request choice state
         await DatabaseManager(database_path=number_match).save_country_choice_requests(
-            user_id=callback.from_user.id,
+            user_id=message.from_user.id,
             number_match=number_match,
-            name_country=name_country,
+            name_country=input_name_country,
             unique_word=unique_word,
             admin_decision_message_id=admin_decision_message.message_id
         )
-    except Exception as error:
-        await callback_utils.handle_error(callback, error, "Не удалось обработать ваш выбор государства.")
+    except (ValueError, Exception) as error:
+        await callback_utils.handle_exception(message, 'end_country_from_number_match_for_user', error, '❌ <b>Ошибка на этапе выбора государства, для закрепления за ним.</b>')

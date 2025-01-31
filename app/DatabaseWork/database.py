@@ -2,10 +2,13 @@ import os
 from datetime import datetime
 import pytz
 
-from asyncio.log import logger
+import logging
 from typing import List, Dict, Any, Optional
 
 from SPyderSQL import AsyncSQLite
+
+logger = logging.getLogger(__name__)
+
 
 # Constants
 MASTER_DB_PATH = 'database/master.db'
@@ -157,10 +160,16 @@ class DatabaseManager:
         emission = data_currency['emission']
         current_amount = data_currency['current_amount']
 
-        new_course = (current_amount / emission)
-        new_course = new_course * course_following
-        new_course = 1 / new_course
-        new_course = round(new_course, 9)
+        new_course = 0.001
+
+        if current_amount > 0:
+            new_course = (current_amount / emission)
+            new_course = new_course * course_following
+            new_course = 1 / new_course
+            new_course = round(new_course, 9)
+        elif current_amount <= 0:
+            new_course = 1
+
 
         data_set = {
             'current_course': new_course
@@ -319,6 +328,17 @@ class DatabaseManager:
                 'status_confirmed': 'BLOB',
                 'date_confirmed': 'TEXT',
                 'message_id_delete': 'INTEGER'
+            },
+            'bank_transfer_requests': {
+                'number_match': 'INTEGER',
+                'payer_country_id': 'INTEGER',
+                'beneficiary_country_id': 'INTEGER',
+                'currency_id': 'INTEGER',
+                'amount_currency_transfer': 'REAL',
+                'comment': 'TEXT',
+                'date_request_creation': 'TEXT',
+                'status_cancelled': 'BLOB',
+                'date_cancelled': 'TEXT'
             }
         }
 
@@ -681,11 +701,12 @@ class DatabaseManager:
         await self.deleted_request_country_in_match(data_user)
 
 
-    async def get_data_country(self, user_id: int, number_match: str) -> dict | None:
+    async def get_data_country(self, number_match: str, user_id: int = None, country_id: int = None) -> dict | None:
         """
         Возвращает данные по государству
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
 
+        :param country_id: id искомого государства
         :param user_id: message.from_user.id | callback.from_user.id
         :param number_match: number match
         :return: dict {country_id, name_country, status: {admin}, currency: [] }
@@ -693,19 +714,28 @@ class DatabaseManager:
         try:
             column_names = ['id', 'telegram_id', 'name', 'admin']
 
+            where_clause = {}
+
+            if user_id:
+                where_clause['telegram_id'] = user_id
+            elif country_id:
+                where_clause['id'] = country_id
+            else:
+                raise Exception('Не найдены искомые данные для поиска данных государства')
+
             data_countries = await self.select(
                 table_name='countries',
-                columns=column_names
+                columns=column_names,
+                where_clause=where_clause
             )
-
         except Exception as error:
-            print(f"Ошибка при получении данных о странах: {error}. № Матч {number_match}.")
+            logger.error(f"Ошибка при получении данных о странах: {error}. № Матч {number_match}.")
             return None
 
         characteristics_country: dict | None = None
 
         for data_country in data_countries:
-            if data_country['telegram_id'] == user_id:
+            if (data_country['telegram_id'] == user_id) or (data_country['id'] == country_id):
                 characteristics_country = {
                     'country_id': data_country['id'],
                     'telegram_id': data_country['telegram_id'],
@@ -716,7 +746,7 @@ class DatabaseManager:
                 break
 
         if not characteristics_country:
-            print(f"Данные о стране не найдены для пользователя {user_id}. № Матч {number_match}.")
+            logger.error(f"Данные о стране не найдены для пользователя user_id ({user_id}) country_id ({country_id}). № Матч {number_match}.")
             return None
 
         return characteristics_country
@@ -744,40 +774,36 @@ class DatabaseManager:
                 'current_course'
             ]
 
-            data_currencies = await self.select(
+            if not data_country:
+                raise Exception('Нет данных государства в get_data_currency')
+
+            where_clause = {
+                'country_id': data_country['country_id']
+            }
+
+            data_currency = await self.select(
                 table_name='currency',
-                columns=column_names
+                columns=column_names,
+                where_clause=where_clause
             )
 
+            if not data_currency:
+                raise Exception('Нет данных валюты в get_data_currency')
+
+            currency_info: dict | False = data_currency[0]
+
+            if not currency_info:
+                # print(f"Данные о валюте не найдены для государства {data_country['name_country']}. № Матч {number_match}.")
+                data_country['currency'].append(False)
+            elif currency_info:
+                data_country['currency'].append(currency_info)
+
+            return data_country
+
         except Exception as error:
-            print(f"Ошибка при получении данных о валюте: {error}. № Матч {number_match}.")
+            logger.error(f"Ошибка при получении данных о валюты ID государства {data_country['country_id']}: {error}. № Матч {number_match}.")
             return None
 
-        currency_info: dict | False = False
-
-        for data_currency in data_currencies:
-            if data_currency['country_id'] == data_country['country_id']:
-                currency_info = {
-                    'id': data_currency['id'],
-                    'country_id': data_currency['country_id'],
-                    'name': data_currency['name'],
-                    'tick': data_currency['tick'],
-                    'following_resource': data_currency['following_resource'],
-                    'course_following': data_currency['course_following'],
-                    'capitalization': data_currency['capitalization'],
-                    'emission': data_currency['emission'],
-                    'current_amount': data_currency['current_amount'],
-                    'current_course': data_currency['current_course']
-                }
-                break
-
-        if not currency_info:
-            # print(f"Данные о валюте не найдены для государства {data_country['name_country']}. № Матч {number_match}.")
-            data_country['currency'].append(False)
-        elif currency_info:
-            data_country['currency'].append(currency_info)
-
-        return data_country
 
     async def get_data_form_emis_nat_currency_request(self, user_id: int) -> dict | None:
         """
@@ -1188,4 +1214,303 @@ class DatabaseManager:
         if finally_country_currency_capitals:
             return finally_country_currency_capitals
         else:
+            return None
+
+
+    async def register_bank_transfer(
+            self,
+            number_match: str,
+            payer_country_id: int,
+            beneficiary_country_id: int,
+            currency_id: int,
+            amount_currency_transfer: float,
+            comment: str,
+            date_request_creation: str,
+            status_cancelled: bool,
+            date_cancelled: str
+    ):
+        """
+        Сохраняет заявку банковского перевода в базу данных.
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param number_match:
+        :param payer_country_id:
+        :param beneficiary_country_id:
+        :param currency_id:
+        :param amount_currency_transfer:
+        :param comment:
+        :param date_request_creation:
+        :param status_cancelled:
+        :param date_cancelled:
+        """
+        try:
+            # Preparing data for insertion
+            column_names = [
+                'number_match',
+                'payer_country_id',
+                'beneficiary_country_id',
+                'currency_id',
+                'amount_currency_transfer',
+                'comment',
+                'date_request_creation',
+                'status_cancelled',
+                'date_cancelled',
+            ]
+
+            values = (
+                number_match,
+                payer_country_id,
+                beneficiary_country_id,
+                currency_id,
+                amount_currency_transfer,
+                comment,
+                date_request_creation,
+                status_cancelled,
+                date_cancelled
+            )
+
+            # Checking data length
+            if len(column_names) != len(values):
+                raise ValueError(f"Mismatch between columns and values! Values: {values} for Columns: {column_names}")
+
+            # Inserting data into the database
+            await self.insert(
+                table_name='bank_transfer_requests',
+                columns=column_names,
+                values=values
+            )
+        except (ValueError, TypeError) as error:
+            print(f'Error "DatabaseManager/register_bank_transfer": {error}')
+
+    async def transfer_capital(self, country_id: int, currency_id: int, amount_currency_transfer: float, payer: bool = False, beneficiary: bool = False):
+        """
+        Совершение перевода капитала
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param country_id: Id государства с которыми
+        :param currency_id: ID валюты
+        :param amount_currency_transfer: объем перевода
+        :param payer: отправитель
+        :param beneficiary: получатель
+        :return:
+        """
+        column_names = [
+            f'country_{country_id}'
+        ]
+
+        where_clause = {
+            f'currency_id': currency_id
+        }
+
+        data_amount_capital_payer = await self.select(
+            table_name='currency_capitals',
+            columns=column_names,
+            where_clause=where_clause
+        )
+
+        amount_capital_payer = data_amount_capital_payer[0][f'country_{country_id}']
+
+        if amount_capital_payer is None:
+            amount_capital_payer = 0.00
+        elif amount_capital_payer <= 0:
+            amount_capital_payer = 0.00
+
+        logger.info(f'Найденный капитал у ({country_id}): {amount_capital_payer}')
+
+        new_amount_capital = 0
+
+        if payer:
+            new_amount_capital = amount_capital_payer - amount_currency_transfer
+        elif beneficiary:
+            new_amount_capital = amount_capital_payer + amount_currency_transfer
+
+        if new_amount_capital <= 0:
+            new_amount_capital = None
+
+        logger.info(f'Новый показатель капитала у ({country_id}): {new_amount_capital}')
+
+        data_set = {
+            f'country_{country_id}': new_amount_capital
+        }
+
+        where_clause = {
+            'currency_id': currency_id,
+        }
+
+        await self.update(
+            table_name='currency_capitals',
+            data_set=data_set,
+            where_clause=where_clause
+        )
+
+    async def execution_bank_transfer(self, data_bank_transfer_request: dict):
+        """
+        Выполнение банковского перевода от отправителя к получателю
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param data_bank_transfer_request: [
+            'id',
+            'number_match',
+            'payer_country_id',
+            'beneficiary_country_id',
+            'currency_id',
+            'amount_currency_transfer',
+            'comment',
+            'date_request_creation',
+            'status_cancelled',
+            'date_cancelled',
+        ]
+        """
+        payer_country_id = data_bank_transfer_request['payer_country_id']
+        beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
+        currency_id = data_bank_transfer_request['currency_id']
+        amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
+
+        await self.transfer_capital(
+            country_id=payer_country_id,
+            currency_id=currency_id,
+            amount_currency_transfer=amount_currency_transfer,
+            payer=True
+        )
+
+        await self.transfer_capital(
+            country_id=beneficiary_country_id,
+            currency_id=currency_id,
+            amount_currency_transfer=amount_currency_transfer,
+            beneficiary=True
+        )
+
+    async def get_bank_transfer(self, payer_country_id: int = 0, date_request_creation: str = '', request_id: int = 0) -> dict | None:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param request_id: Id сделки
+        :param date_request_creation: Дата и время создания банковского перевода
+        :param payer_country_id: Id отправителя
+        :return: возвращает словарь в списке, в словаре есть данные о банковском переводе | None
+        """
+        column_names = [
+            'id',
+            'number_match',
+            'payer_country_id',
+            'beneficiary_country_id',
+            'currency_id',
+            'amount_currency_transfer',
+            'comment',
+            'date_request_creation',
+            'status_cancelled',
+            'date_cancelled',
+        ]
+
+        where_clause = {}
+
+        if payer_country_id != 0:
+            where_clause['payer_country_id'] = payer_country_id
+        if request_id != 0:
+            where_clause['id'] = request_id
+        if date_request_creation != '':
+            where_clause['date_request_creation'] = date_request_creation
+
+        data_requests = await self.select(
+            table_name='bank_transfer_requests',
+            columns=column_names,
+            where_clause=where_clause
+        )
+
+        if data_requests:
+            return data_requests[0]
+        else:
+            return None
+
+    async def update_amount_national_currency_for_issuer(
+            self,
+            number_match: str,
+            country_id: int,
+            currency_id: int,
+            currency_name: str,
+            amount_currency_transfer: float,
+            payer: bool = False,
+            beneficiary: bool = False
+    ) -> bool | None:
+        """
+        Проверяет государство на эмитента, при банковском переводе. Если проверяемое государство является таковым, то обновляет текущий объем валюты нац. валюты у эмитента, если проверяемое id государства является таковым.
+        \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param payer: отправитель
+        :param beneficiary: получатель
+        :param number_match: номер матча
+        :param country_id: ID проверяемого государства
+        :param currency_id: ID искомой валюты эмитента
+        :param currency_name: Наименование искомой валюты эмитента
+        :param amount_currency_transfer: объем изменений валюты, если проверяемое государство является эмитентом искомой валюты
+        """
+        status_country = ''
+
+        if payer:
+            status_country = 'payer'
+        elif beneficiary:
+            status_country = 'beneficiary'
+
+        try:
+            data_country = await self.get_data_country(
+                number_match=number_match,
+                country_id=country_id
+            )
+
+            if not data_country:
+                raise Exception(f'Данные ГОСУДАРСТВА искомого эмитента в роли {status_country}, по валюте {currency_name}: не найдены')
+
+            data_currency = await self.get_data_currency(
+                data_country=data_country,
+                number_match=number_match
+            )
+
+            if not data_currency:
+                raise Exception(f'Данные ВАЛЮТЫ искомого эмитента в роли {status_country}, по валюте {currency_name}: не найдены')
+
+
+            if data_currency['currency'][0]['id'] == currency_id:
+                column_names = ['current_amount']
+                where_clause = {'id': currency_id}
+
+                data_amount_national_currency_for_issuer = await self.select(
+                    table_name='currency',
+                    columns=column_names,
+                    where_clause=where_clause
+                )
+
+                current_amount_national_currency = data_amount_national_currency_for_issuer[0]['current_amount']
+
+                if current_amount_national_currency is None:
+                    current_amount_national_currency = 0.00
+                elif current_amount_national_currency <= 0:
+                    current_amount_national_currency = 0.00
+
+                logger.info(f'Найденный капитала эмитента ({country_id}), он же {status_country}: {current_amount_national_currency}')
+
+                new_amount_national_currency = 0
+
+                if payer:
+                    new_amount_national_currency = current_amount_national_currency - amount_currency_transfer
+                elif beneficiary:
+                    new_amount_national_currency = current_amount_national_currency + amount_currency_transfer
+
+                if new_amount_national_currency <= 0:
+                    new_amount_national_currency = None
+
+                logger.info(f'Новый показатель капитала эмитента ({country_id}), он же {status_country}: {new_amount_national_currency}')
+
+                data_set = {'current_amount': new_amount_national_currency}
+                where_clause = {'id': currency_id}
+
+                await self.update(
+                    table_name='currency',
+                    data_set=data_set,
+                    where_clause=where_clause
+                )
+                return True
+            else:
+                return False
+        except Exception as error:
+            logger.error(f'Данные не обнаружены: {error}')
             return None

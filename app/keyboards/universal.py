@@ -24,6 +24,9 @@ async def launch_solution(
         elif number_match and (launch_type == 'FormEmissionNatCurrency'):
             confirm_callback = f'Confirm{launch_type}'
             restart_callback = f'Restart{launch_type}_{number_match}'
+        elif number_match and (launch_type == 'FormBankTransfer'):
+            confirm_callback = f'Confirm{launch_type}'
+            restart_callback = f'Restart{launch_type}_{number_match}'
         else:
             raise Exception('Невозможно создать клавиатуру "result - else".')
 
