@@ -515,7 +515,7 @@ class DatabaseManager:
     async def delete_charts_from_match(number_match: str):
         """Удаляет все диаграммы и графики связанные с конкретным номером матча"""
         try:
-            name_directory = "chart/"
+            name_directory = f"chart/"
             if not os.path.exists(name_directory):
                 raise Exception(f"Директория {name_directory} не существует.")
 
@@ -751,58 +751,45 @@ class DatabaseManager:
 
         return characteristics_country
 
-    async def get_data_currency(self, data_country: dict, number_match: str) -> dict | None:
+    async def get_data_currency(self, data_country: dict) -> dict | None:
         """
         Возвращает данные по валюте государства
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
 
         :param data_country: match_db.get_data_country()
-        :param number_match: number match
         :return: {'id','country_id','name','tick','following_resource','course_following','capitalization','emission','current_amount','current_course'}
         """
-        try:
-            column_names = [
-                'id',
-                'country_id',
-                'name',
-                'tick',
-                'following_resource',
-                'course_following',
-                'capitalization',
-                'emission',
-                'current_amount',
-                'current_course'
-            ]
+        column_names = [
+            'id',
+            'country_id',
+            'name',
+            'tick',
+            'following_resource',
+            'course_following',
+            'capitalization',
+            'emission',
+            'current_amount',
+            'current_course'
+        ]
 
-            if not data_country:
-                raise Exception('Нет данных государства в get_data_currency')
+        where_clause = {
+            'country_id': data_country['country_id']
+        }
 
-            where_clause = {
-                'country_id': data_country['country_id']
-            }
+        data_currency = await self.select(
+            table_name='currency',
+            columns=column_names,
+            where_clause=where_clause
+        )
 
-            data_currency = await self.select(
-                table_name='currency',
-                columns=column_names,
-                where_clause=where_clause
-            )
+        if not data_currency:
+            # print(f"Данные о валюте не найдены для государства {data_country['name_country']}. № Матч {number_match}.")
+            data_country['currency'].append(False)
+        elif data_currency:
+            data_country['currency'].append(data_currency[0])
 
-            if not data_currency:
-                raise Exception('Нет данных валюты в get_data_currency')
+        return data_country
 
-            currency_info: dict | False = data_currency[0]
-
-            if not currency_info:
-                # print(f"Данные о валюте не найдены для государства {data_country['name_country']}. № Матч {number_match}.")
-                data_country['currency'].append(False)
-            elif currency_info:
-                data_country['currency'].append(currency_info)
-
-            return data_country
-
-        except Exception as error:
-            logger.error(f"Ошибка при получении данных о валюты ID государства {data_country['country_id']}: {error}. № Матч {number_match}.")
-            return None
 
 
     async def get_data_form_emis_nat_currency_request(self, user_id: int) -> dict | None:
@@ -1121,8 +1108,7 @@ class DatabaseManager:
             number_match=number_match
         )
         data_currency = await self.get_data_currency(
-            data_country=data_country,
-            number_match=number_match
+            data_country=data_country
         )
 
         table_name = 'currency_capitals'
@@ -1461,8 +1447,7 @@ class DatabaseManager:
                 raise Exception(f'Данные ГОСУДАРСТВА искомого эмитента в роли {status_country}, по валюте {currency_name}: не найдены')
 
             data_currency = await self.get_data_currency(
-                data_country=data_country,
-                number_match=number_match
+                data_country=data_country
             )
 
             if not data_currency:
