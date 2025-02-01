@@ -360,7 +360,7 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
             f'<b>№ матча:</b> {number_match}\n'
             f'<b>Ваше государство:</b> {data_country['name_country']}\n'
             f'<b>Дата заявки:</b> {date_request_creation}\n\n'
-            '<i>Проверьте правильно ли заполнены данные, по вашей валюты:</i>'
+            '<i>Проверьте правильно ли заполнены данные, по вашей валюте:</i>'
             '<blockquote>'
                 f"<b>Матч:</b> {data_request_emission_national_currency['number_match']}\n"
                 f"<b>Государство:</b> {data_country['name_country']}\n"
@@ -389,87 +389,98 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
         await callback_utils.handle_exception(message, 'end_emission_national_currency', error, '❌ <b>Ошибка при обработке объема обеспечения валюты.</b>')
 
 
-@router.callback_query(F.data == PREFIXES['CONFIRM'])
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES['CONFIRM']}_'))
 async def confirm_form_emission_national_currency(callback: CallbackQuery, state: FSMContext):
     """
     Подтверждение заполненной формы эмиссии национальной валюты.
     """
     data_request_emission_national_currency = await state.get_data()
-    number_match = data_request_emission_national_currency['number_match']
-    date_request_creation = data_request_emission_national_currency['date_request_creation']
-    data_country = data_request_emission_national_currency['data_country']
-    name_currency = data_request_emission_national_currency['name_currency']
-    tick_currency = data_request_emission_national_currency['tick_currency']
-    following_resource = data_request_emission_national_currency['following_resource']
-    course_following = format_number(data_request_emission_national_currency['course_following'])
-    amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
-    capitalization = format_number(data_request_emission_national_currency['capitalization'])
+
+    if not data_request_emission_national_currency:
+        await callback_utils.send_message(callback=callback,
+                                          text='Возникла ошибка. Попробуйте повторить эмиссию нац. валюты.'
+                                          )
+
+        number_match = callback_utils.parse_callback_data(callback.data, PREFIXES['CONFIRM'])[0]
+        await start_emission_national_currency(callback, state, number_match=number_match)
+
+    elif data_request_emission_national_currency:
+
+        number_match = data_request_emission_national_currency['number_match']
+        date_request_creation = data_request_emission_national_currency['date_request_creation']
+        data_country = data_request_emission_national_currency['data_country']
+        name_currency = data_request_emission_national_currency['name_currency']
+        tick_currency = data_request_emission_national_currency['tick_currency']
+        following_resource = data_request_emission_national_currency['following_resource']
+        course_following = format_number(data_request_emission_national_currency['course_following'])
+        amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
+        capitalization = format_number(data_request_emission_national_currency['capitalization'])
 
 
-    instructions = (
-        f"<b>Следуйте этой инструкции, для подтверждения эмиссии вашей нац. валюты:</b>\n"
-        f"<blockquote>"
-        f"1. <b>Откройте игру:</b> Supremacy1914\n"
-        f"2. <b>Войдите в матч под номером:</b> {number_match};\n"
-        f"3. <b>Найдите игрока:</b> 'Company Mekas' (он же 'International Monetary Fund');\n"
-        f"4. <b>Отправьте сделку:</b> вы переводите {capitalization} серебра, в обмен на 1 серебро;\n"
-        f"</blockquote>\n"
-        f"<b>Пример сделки указан на скрине.</b>\n\n"
-        f"<b>Отправьте сделку:</b> вы переводите <b>{capitalization}</b> серебра, в обмен на 1 серебро"
-    )
+        instructions = (
+            f"<b>Следуйте этой инструкции, для подтверждения эмиссии вашей нац. валюты:</b>\n"
+            f"<blockquote>"
+            f"1. <b>Откройте игру:</b> Supremacy1914\n"
+            f"2. <b>Войдите в матч под номером:</b> {number_match};\n"
+            f"3. <b>Найдите игрока:</b> 'Company Mekas' (он же 'International Monetary Fund');\n"
+            f"4. <b>Отправьте сделку:</b> вы переводите {capitalization} серебра, в обмен на 1 серебро;\n"
+            f"</blockquote>\n"
+            f"<b>Пример сделки указан на скрине.</b>\n\n"
+            f"<b>Отправьте сделку:</b> вы переводите <b>{capitalization}</b> серебра, в обмен на 1 серебро"
+        )
 
-    photo_path_1_exemple_transaction_emission_photo_path = 'image/1_exemple_transaction_emission_national_currency.jpg'
-    photo = FSInputFile(photo_path_1_exemple_transaction_emission_photo_path)
+        photo_path_1_exemple_transaction_emission_photo_path = 'image/1_exemple_transaction_emission_national_currency.jpg'
+        photo = FSInputFile(photo_path_1_exemple_transaction_emission_photo_path)
 
-    await delete_message(callback.bot, callback.from_user.id, data_request_emission_national_currency['message_id_delete'])
+        await delete_message(callback.bot, callback.from_user.id, data_request_emission_national_currency['message_id_delete'])
 
-    await callback.message.answer_photo(
-        photo,
-        instructions,
-        parse_mode='html'
-    )
+        await callback.message.answer_photo(
+            photo,
+            instructions,
+            parse_mode='html'
+        )
 
-    chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
+        chat_id_admin = await DatabaseManager().get_owner_admin_telegram_id()
 
-    admin_message = (
-        f"<i><b>Запрос государства</b> на <b>эмиссию</b> своей <b>нац. валюты</b></i>\n"
-        f"<b>Дата заявки:</b> {date_request_creation}\n\n"
-        f"<b>Матч:</b> {number_match}\n"
-        f"<b>Государство:</b> {data_country['name_country']}\n"
-        f"<b>Название валюты:</b> {name_currency}\n"
-        f"<b>Тикер валюты:</b> {tick_currency}\n"
-        f"<b>Валюта закреплена за ресурсом:</b> {following_resource}\n"
-        f"<b>Соотношение валюты к ресурсу:</b> {course_following} единиц к 1 {following_resource}\n"
-        f"<b>Объем эмиссии:</b> {amount_emission_currency} единиц\n"
-        f"<b>Капитализация:</b> {capitalization} серебра\n\n"
-        f"<i>Проверить:</i>\n"
-        f"<blockquote>"
-            "1. Дату заявки\n"
-            "2. Номер матча\n"
-            "3. Какое государство сделало запрос на эмиссию нац. валюты\n"
-            "4. Содержит ли название валюты матерные слова или символьные дефекты\n"
-            "5. Содержит ли тикер валюты русские буквы или символьные дефекты\n"
-            f"6. Объем эмиссии соответствует капитализации, по курсу {course_following} ед. == 1 серебро\n"
-        f"</blockquote>"
-        f"\n\nПеред тем как одобрить или отклонить запрос дождитесь перевода {capitalization} серебра"
-    )
+        admin_message = (
+            f"<i><b>Запрос государства</b> на <b>эмиссию</b> своей <b>нац. валюты</b></i>\n"
+            f"<b>Дата заявки:</b> {date_request_creation}\n\n"
+            f"<b>Матч:</b> {number_match}\n"
+            f"<b>Государство:</b> {data_country['name_country']}\n"
+            f"<b>Название валюты:</b> {name_currency}\n"
+            f"<b>Тикер валюты:</b> {tick_currency}\n"
+            f"<b>Валюта закреплена за ресурсом:</b> {following_resource}\n"
+            f"<b>Соотношение валюты к ресурсу:</b> {course_following} единиц к 1 {following_resource}\n"
+            f"<b>Объем эмиссии:</b> {amount_emission_currency} единиц\n"
+            f"<b>Капитализация:</b> {capitalization} серебра\n\n"
+            f"<i>Проверить:</i>\n"
+            f"<blockquote>"
+                "1. Дату заявки\n"
+                "2. Номер матча\n"
+                "3. Какое государство сделало запрос на эмиссию нац. валюты\n"
+                "4. Содержит ли название валюты матерные слова или символьные дефекты\n"
+                "5. Содержит ли тикер валюты русские буквы или символьные дефекты\n"
+                f"6. Объем эмиссии соответствует капитализации, по курсу {course_following} ед. == 1 серебро\n"
+            f"</blockquote>"
+            f"\n\nПеред тем как одобрить или отклонить запрос дождитесь перевода {capitalization} серебра"
+        )
 
-    keyboard = await verify_request_by_admin(
-        request_type='RequestFormEmisNatCur',
-        number_match=number_match,
-        telegram_id_user=callback.from_user.id
-    )
+        keyboard = await verify_request_by_admin(
+            request_type='RequestFormEmisNatCur',
+            number_match=number_match,
+            telegram_id_user=callback.from_user.id
+        )
 
-    send_admin_message = await callback.bot.send_message(
-        chat_id=chat_id_admin,
-        text=admin_message,
-        reply_markup=keyboard,
-        parse_mode="html"
-    )
+        send_admin_message = await callback.bot.send_message(
+            chat_id=chat_id_admin,
+            text=admin_message,
+            reply_markup=keyboard,
+            parse_mode="html"
+        )
 
-    await DatabaseManager(database_path=number_match).save_currency_emission_request(data_request=data_request_emission_national_currency, message_id_delete=send_admin_message.message_id)
+        await DatabaseManager(database_path=number_match).save_currency_emission_request(data_request=data_request_emission_national_currency, message_id_delete=send_admin_message.message_id)
 
-    await state.clear()
+        await state.clear()
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))

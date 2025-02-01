@@ -383,6 +383,39 @@ class DatabaseManager:
                 values=(name_country, False)
             )
 
+    async def get_template(self, name_table: str, column_names: list, where_clause: dict = None, alone: bool = True):
+        """
+        шаблон для возвращения данных из базы данных
+        \n\n Данный шаблон подходит для возврата данных как из master.db так из любого другого матча.
+        \n\n Обязательно заполнить параметр where_clause - если alone = True.
+
+        :param name_table: Название таблицы, из которой мы берем данные. Из какой базы данных не важно.
+        :param column_names: Список названий столбцов которых хотим взять данные из таблицы. От 1-го до без ограничений.
+        :param where_clause: Словарь {'название столбца': 'искомые данные'} - по нему мы ищем конкретные строки записей. От 1-го до без ограничений искомых данных в словаре.
+        :param alone: True - нужно найти 1 запись, False - нужно найти множество записей. По умолчанию: True
+
+        :return:
+        """
+
+        if where_clause is None:
+            where_clause = {}
+        if alone:
+            alone_record = await self.select(
+                table_name=name_table,
+                columns=column_names,
+                where_clause=where_clause
+            )
+
+            return alone_record[0][column_names[0]]
+
+        elif not alone:
+            much_records = await self.select(
+                table_name=name_table,
+                columns=column_names
+            )
+
+            return much_records
+
     async def get_countries_names(self, free: bool = False, busy: bool = False):
         """
         Возвращает список стран из таблицы countries
@@ -390,21 +423,37 @@ class DatabaseManager:
 
         :param free: Возвращает свободные государства
         :param busy: Возвращает занятые государства
+        :return: Free : True - список свободных стран. Busy : True - список занятых стран
         """
-        data_countries = await self.select(
-            table_name='countries',
-            columns=['name', 'telegram_id']
-        )
+        if free:
+            free_countries = await self.get_template(
+                name_table='countries',
+                column_names=['name'],
+                where_clause={'telegram_id': None},
+                alone=False
+            )
 
-        countries_from_match = list()
+            free_countries_from_match = list()
 
-        for data_country in data_countries:
-            if (free == True) and (data_country['telegram_id'] is None):
-                countries_from_match.append(data_country['name'])
-            elif (busy == True) and data_country['telegram_id']:
-                countries_from_match.append(data_country['name'])
+            for data_country in free_countries:
+                free_countries_from_match.append(data_country['name'])
 
-        return countries_from_match
+            return free_countries_from_match
+
+        elif busy:
+            data_countries = await self.get_template(
+                name_table='countries',
+                column_names=['name', 'telegram_id'],
+                alone=False
+            )
+
+            busy_countries_from_match = list()
+
+            for data_country in data_countries:
+                if data_country['telegram_id']:
+                    busy_countries_from_match.append(data_country['name'])
+
+            return busy_countries_from_match
 
     async def get_country_id(self, country_name: str) -> int:
         """
@@ -413,14 +462,13 @@ class DatabaseManager:
         :param country_name: название государства, по которому ищем его id
         :return: Возвращает id искомого государства
         """
-        data_countries = await self.select(
-            table_name='countries',
-            columns=['id', 'name']
+        country_id = await self.get_template(
+            name_table='countries',
+            column_names=['id'],
+            where_clause={'name': country_name}
         )
 
-        for data_country in data_countries:
-            if data_country['name'] == country_name:
-                return data_country['id']
+        return country_id
 
     async def get_country_name(self, country_id: int) -> int:
         """
@@ -429,14 +477,13 @@ class DatabaseManager:
         :param country_id: Id государства, по которому ищем его название
         :return: Возвращает название искомого государства
         """
-        data_countries = await self.select(
-            table_name='countries',
-            columns=['id', 'name']
+        country_name = await self.get_template(
+            name_table='countries',
+            column_names=['name'],
+            where_clause={'id': country_id}
         )
 
-        for data_country in data_countries:
-            if data_country['id'] == country_id:
-                return data_country['name']
+        return country_name
 
     async def get_country_telegram_id(self, country_id: int) -> int:
         """
@@ -445,13 +492,13 @@ class DatabaseManager:
         :param country_id: Id государства, по которому ищем его название
         :return: Возвращает telegram id искомого государства
         """
-        telegram_id = await self.select(
-            table_name='countries',
-            columns=['telegram_id'],
+        telegram_id = await self.get_template(
+            name_table='countries',
+            column_names=['telegram_id'],
             where_clause={'id': country_id}
         )
 
-        return telegram_id[0]['telegram_id']
+        return telegram_id
 
     async def get_currency_name(self, currency_id: int) -> str:
         """
@@ -460,13 +507,13 @@ class DatabaseManager:
         :param currency_id: Id искомой валюты
         :return: возвращает название искомой валюты
         """
-        data_country = await self.select(
-            table_name='currency',
-            columns=['id', 'name'],
+        currency_name = await self.get_template(
+            name_table='currency',
+            column_names=['name'],
             where_clause={'id': currency_id}
         )
 
-        return data_country[0]['name']
+        return currency_name
 
     async def get_currency_tick(self, currency_id: int) -> str:
         """
@@ -475,14 +522,13 @@ class DatabaseManager:
         :param currency_id: Id искомой валюты
         :return: возвращает Tick искомой валюты
         """
-        data_countries = await self.select(
-            table_name='currency',
-            columns=['id', 'tick']
+        currency_tick = await self.get_template(
+            name_table='currency',
+            column_names=['tick'],
+            where_clause={'id': currency_id}
         )
 
-        for data_country in data_countries:
-            if data_country['id'] == currency_id:
-                return data_country['tick']
+        return currency_tick
 
 
     async def delete_match_record(self, number_match: str) -> bool:
