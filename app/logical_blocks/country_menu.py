@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.country_menu as kb
 from app.message_designer.deletezer import delete_message
-from app.message_designer.formatzer import format_number
+from app.message_designer.formatzer import format_number_ultra
 from app.utils import callback_utils
 
 
@@ -51,6 +51,8 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
 
     print(f'characteristics_country: {characteristics_country}')
 
+    name_country = characteristics_country['name_country']
+
     currency_info : str = ''
 
     try:
@@ -58,8 +60,14 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
             "не создана (...)"
             if characteristics_country['currency'][0] is False else
             f"{characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
-            f"\n<b>Курс валюты:</b> {format_number(characteristics_country['currency'][0]['current_course'])} {characteristics_country['currency'][0]['following_resource']}"
-            f"\n<b>Текущий запас валюты:</b> {format_number(characteristics_country['currency'][0]['current_amount'])} {characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
+            f"\n<b>Курс валюты:</b> "
+            f"{format_number_ultra(
+                number=characteristics_country['currency'][0]['current_course'],
+                course=True
+            )} "
+            f"{characteristics_country['currency'][0]['following_resource']}"
+            f"\n<b>Текущий запас валюты:</b> {format_number_ultra(characteristics_country['currency'][0]['current_amount'])} "
+            f"{characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
         )
     except Exception as error:
         await callback_utils.handle_error(callback, error, 'Ошибка при выводе информации валюты государства в главном меню государства')
@@ -68,7 +76,7 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
         if characteristics_country:
             characteristics = (
                 f'<b>№ Матча:</b> {number_match}\n'
-                f'<b>Ваше Государство:</b> {characteristics_country['name_country']}\n'
+                f'<b>Ваше Государство:</b> {name_country}\n'
                 f'<b>Валюта:</b> {currency_info}'
             )
 

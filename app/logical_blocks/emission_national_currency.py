@@ -11,7 +11,7 @@ from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
 import app.keyboards.emission_national_currency as kb
 from app.keyboards.universal import launch_solution, verify_request_by_admin
-from app.message_designer.formatzer import format_number
+from app.message_designer.formatzer import format_number_ultra
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
@@ -246,14 +246,14 @@ async def input_course_following_for_emission_national_currency(callback: Callba
             '<i>Правила введения курса соотношения:</i>\n'
             '<blockquote>'
                 '1. <b>Ваша валюта иметь соотношение:</b> не менее 1 000 ед. валюты к 1 ед. серебра.\n'
-                '2. <b>Ваша валюта иметь соотношение:</b> не более 100 000 ед. валюты к 1 ед. серебра.\n'
+                '2. <b>Ваша валюта иметь соотношение:</b> не более 50 000 ед. валюты к 1 ед. серебра.\n'
                 '3. <b>При вводе пишите число без пробелов.</b>\n'
                 '<b>Целое число</b> <i>- 1000 (тысяча)</i>\n'
                 '<b>Не целое число</b> <i>- 1000.55 (тысяча и пятьдесят пять сотых)</i>'
             '</blockquote>\n\n'
             '<b>Введите курс соотношения вашей валюты к закрепленному ресурсу:</b>\n'
             '<blockquote>'
-            f'<i>Например, если курс вашей валюты 100 000 единиц = 1 {following_resource}, введите "100000".</i>'
+            f'<i>Например, если курс вашей валюты 50 000 единиц = 1 {following_resource}, введите "50000".</i>'
             f'</blockquote>'
         )
     except Exception as error:
@@ -269,13 +269,13 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
 
     try:
         course_following = round(float(course_following_input), 2)
-        if (course_following < 1000.00) or (course_following > 100000.00):
-            raise ValueError('Соотношение между вашей валютой и закрепленного ресурса, должен быть не меньше 1 000,00 и не больше 100 000,00')
+        if (course_following < 1000.00) or (course_following > 50000.00):
+            raise ValueError('Соотношение между вашей валютой и закрепленного ресурса, должен быть не меньше 1 000,00 и не больше 50 000,00')
         elif not check_text_validity(
             search_input=course_following_input,
             float_status=True
         ):
-            raise ValueError('Вы должны указать число от 1.000 до 100.000, без букв.')
+            raise ValueError('Вы должны указать число от 1.000 до 50.000, без букв.')
 
         await update_state(state, course_following=course_following)
 
@@ -284,6 +284,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
         data_currency_emission_request = await state.get_data()
         number_match = data_currency_emission_request['number_match']
         data_country = data_currency_emission_request['data_country']
+        course_following_resource = format_number_ultra(data_currency_emission_request['course_following'])
 
         await message.answer(
             f"<b>№ матча:</b> {number_match}\n"
@@ -292,7 +293,7 @@ async def input_amount_for_emission_national_currency(message: Message, state: F
             "<blockquote>"
             "Это самый первый выпуск ваших денежных единиц. Когда вы вводите свою валюту в обращение.\n"
             "</blockquote>\n"
-            f"<b>Стартовый курс вашей валюты:</b> {format_number(data_currency_emission_request['course_following'])}\n\n"
+            f"<b>Стартовый курс вашей валюты:</b> {course_following_resource}\n\n"
             "<b>Введите сумму сколько вы готовы внести серебра для обеспечения вашей стартовой эмиссии нац. валюты:</b>\n"
             "<i>Правила введения суммы серебра:</i>\n"
             "<blockquote>"
@@ -349,25 +350,27 @@ async def end_emission_national_currency(message: Message, state: FSMContext):
         number_match = data_request_emission_national_currency['number_match']
         date_request_creation = data_request_emission_national_currency['date_request_creation']
         data_country = data_request_emission_national_currency['data_country']
+
+        country_name = data_country['name_country']
         name_currency = data_request_emission_national_currency['name_currency']
         tick_currency = data_request_emission_national_currency['tick_currency']
         following_resource = data_request_emission_national_currency['following_resource']
-        course_following = format_number(data_request_emission_national_currency['course_following'])
-        amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
-        capitalization = format_number(data_request_emission_national_currency['capitalization'])
+        course_following_resource = format_number_ultra(data_request_emission_national_currency['course_following'])
+        amount_emission_currency = format_number_ultra(data_request_emission_national_currency['amount_emission_currency'])
+        capitalization = format_number_ultra(data_request_emission_national_currency['capitalization'])
 
         rough_draft_message = (
             f'<b>№ матча:</b> {number_match}\n'
-            f'<b>Ваше государство:</b> {data_country['name_country']}\n'
+            f'<b>Ваше государство:</b> {country_name}\n'
             f'<b>Дата заявки:</b> {date_request_creation}\n\n'
             '<i>Проверьте правильно ли заполнены данные, по вашей валюте:</i>'
             '<blockquote>'
-                f"<b>Матч:</b> {data_request_emission_national_currency['number_match']}\n"
-                f"<b>Государство:</b> {data_country['name_country']}\n"
+                f"<b>Матч:</b> {number_match}\n"
+                f"<b>Государство:</b> {country_name}\n"
                 f"<b>Название валюты:</b> {name_currency}\n"
                 f"<b>Тикер валюты:</b> {tick_currency}\n"
                 f"<b>Валюта закреплена за ресурсом:</b> {following_resource}\n"
-                f"<b>Соотношение валюты к ресурсу:</b> {course_following} ед. к 1 {following_resource}\n"
+                f"<b>Соотношение валюты к ресурсу:</b> {course_following_resource} ед. к 1 {following_resource}\n"
                 f"<b>Объем эмиссии:</b> {amount_emission_currency} единиц\n"
                 f"<b>Капитализация:</b> {capitalization} серебра\n\n"
             '</blockquote>'
@@ -409,12 +412,14 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
         number_match = data_request_emission_national_currency['number_match']
         date_request_creation = data_request_emission_national_currency['date_request_creation']
         data_country = data_request_emission_national_currency['data_country']
+
+        country_name = data_country['name_country']
         name_currency = data_request_emission_national_currency['name_currency']
         tick_currency = data_request_emission_national_currency['tick_currency']
         following_resource = data_request_emission_national_currency['following_resource']
-        course_following = format_number(data_request_emission_national_currency['course_following'])
-        amount_emission_currency = format_number(data_request_emission_national_currency['amount_emission_currency'])
-        capitalization = format_number(data_request_emission_national_currency['capitalization'])
+        course_following_resource = format_number_ultra(data_request_emission_national_currency['course_following'])
+        amount_emission_currency = format_number_ultra(data_request_emission_national_currency['amount_emission_currency'])
+        capitalization = format_number_ultra(data_request_emission_national_currency['capitalization'])
 
 
         instructions = (
@@ -446,11 +451,11 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
             f"<i><b>Запрос государства</b> на <b>эмиссию</b> своей <b>нац. валюты</b></i>\n"
             f"<b>Дата заявки:</b> {date_request_creation}\n\n"
             f"<b>Матч:</b> {number_match}\n"
-            f"<b>Государство:</b> {data_country['name_country']}\n"
+            f"<b>Государство:</b> {country_name}\n"
             f"<b>Название валюты:</b> {name_currency}\n"
             f"<b>Тикер валюты:</b> {tick_currency}\n"
             f"<b>Валюта закреплена за ресурсом:</b> {following_resource}\n"
-            f"<b>Соотношение валюты к ресурсу:</b> {course_following} единиц к 1 {following_resource}\n"
+            f"<b>Соотношение валюты к ресурсу:</b> {course_following_resource} единиц к 1 {following_resource}\n"
             f"<b>Объем эмиссии:</b> {amount_emission_currency} единиц\n"
             f"<b>Капитализация:</b> {capitalization} серебра\n\n"
             f"<i>Проверить:</i>\n"
@@ -460,7 +465,7 @@ async def confirm_form_emission_national_currency(callback: CallbackQuery, state
                 "3. Какое государство сделало запрос на эмиссию нац. валюты\n"
                 "4. Содержит ли название валюты матерные слова или символьные дефекты\n"
                 "5. Содержит ли тикер валюты русские буквы или символьные дефекты\n"
-                f"6. Объем эмиссии соответствует капитализации, по курсу {course_following} ед. == 1 серебро\n"
+                f"6. Объем эмиссии соответствует капитализации, по курсу {course_following_resource} ед. == 1 серебро\n"
             f"</blockquote>"
             f"\n\nПеред тем как одобрить или отклонить запрос дождитесь перевода {capitalization} серебра"
         )
