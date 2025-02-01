@@ -440,7 +440,7 @@ async def end_bank_transfer(message: Message, state: FSMContext):
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES['CONFIRM']}_'))
 async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext):
     """
-    Подтверждение заполненной формы эмиссии национальной валюты.
+    Подтверждение заполненной формы банковского перевода.
     """
     data_bank_transfer_request = await state.get_data()
 
@@ -574,7 +574,7 @@ async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext)
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))
 async def restart_form_bank_transfer(callback: CallbackQuery, state: FSMContext):
     """
-    Перезапуск процесса заполнения формы эмиссии национальной валюты.
+    Перезапуск процесса заполнения формы банковского перевода.
     """
     try:
         number_match = callback_utils.parse_callback_data(callback.data, PREFIXES["RESTART"])[0]
