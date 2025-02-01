@@ -10,7 +10,7 @@ import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
 from app.keyboards.universal import launch_solution
-from app.message_designer.formatzer import format_number
+from app.message_designer.formatzer import format_number_ultra
 from app.message_designer.deletezer import delete_message
 from app.message_designer.chartzer import create_chart_currency_capitals_from_country
 from app.utils import callback_utils
@@ -338,10 +338,12 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
+        amount_currency = format_number_ultra(amount_currency)
+
         sent_message = await message.answer(callback=message,
             text=f'<b>№ матча:</b> {number_match}\n'
             f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
-            f'<b>Вы указали:</b> {amount_currency:,} {current_data_currency['currency_name']} ({current_data_currency['currency_tick']})\n\n'
+            f'<b>Вы указали:</b> {amount_currency} {current_data_currency['currency_name']} ({current_data_currency['currency_tick']})\n\n'
             '<b>Укажите комментарий к вашему переводу:</b>',
             parse_mode='html'
         )
@@ -400,7 +402,7 @@ async def end_bank_transfer(message: Message, state: FSMContext):
         payer_country_id = data_bank_transfer_request['payer_country_id']
         beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
         currency_id = data_bank_transfer_request['currency_id']
-        amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
+        amount_currency_transfer = format_number_ultra(data_bank_transfer_request['amount_currency_transfer'])
         comment = data_bank_transfer_request['comment']
         date_request_creation = data_bank_transfer_request['date_request_creation']
 
@@ -533,19 +535,23 @@ async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext)
         except Exception as error:
             logger.error(f'Ошибка в confirm_form_bank_transfer: {error}')
 
+        bank_transfer_id = data_bank_transfer_request['id']
+        amount_currency_transfer = format_number_ultra(data_bank_transfer_request['amount_currency_transfer'])
+        comment = data_bank_transfer_request['comment']
+
         finally_message_bank_transfer_for_payer = (
-            f'<b>№ Банковского перевода: {data_bank_transfer_request['id']}</b>\n'
+            f'<b>№ Банковского перевода: {bank_transfer_id}</b>\n'
             f'<b>Статус:</b> Успешно✅\n\n'
-            f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
+            f'<b>№ матча:</b> {number_match}\n'
             f'<b>Ваше государство:</b> {payer_country_name}\n'
             f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
             '<blockquote>'
-                f"<b>Матч:</b> {data_bank_transfer_request['number_match']}\n"
+                f"<b>Матч:</b> {number_match}\n"
                 f"<b>Отправитель:</b> {payer_country_name}\n"
                 f"<b>Получатель:</b> {beneficiary_country_name}\n"
                 f"<b>Название валюты:</b> {currency_name}\n"
-                f"<b>Объем перевода:</b> {format_number(data_bank_transfer_request['amount_currency_transfer'])}\n"
-                f"<b>Комментарий:</b> {data_bank_transfer_request['comment']}\n"
+                f"<b>Объем перевода:</b> {amount_currency_transfer}\n"
+                f"<b>Комментарий:</b> {comment}\n"
             '</blockquote>'
         )
 
@@ -556,12 +562,12 @@ async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext)
         beneficiary_message = (
             f'<b>Банковский перевод:</b>\n'
             f'<blockquote>'
-                f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
+                f'<b>№ матча:</b> {number_match}\n'
                 f'<b>Ваше государство:</b> {beneficiary_country_name}\n'
                 f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
-                f'<b>Вам насчет поступило:</b> {format_number(data_bank_transfer_request['amount_currency_transfer'])} {currency_name}\n\n'
+                f'<b>На ваш счет поступило:</b> {amount_currency_transfer} {currency_name}\n\n'
                 f'<b>Отправитель:</b> {payer_country_name}\n'
-                f'<b>Комментарий:</b> {data_bank_transfer_request['comment']}'
+                f'<b>Комментарий:</b> {comment}'
             f'</blockquote>'
         )
 

@@ -2,8 +2,8 @@ from aiogram import Router
 from aiogram.types import CallbackQuery
 
 # Импортируйте модули, которые используются внутри функций
-# import app.DatabaseWork.match as match_db
 from app.DatabaseWork.database import DatabaseManager
+from app.message_designer.formatzer import format_number_ultra
 from app.message_designer.deletezer import delete_message
 from app.utils import callback_utils
 
@@ -27,9 +27,9 @@ async def result_of_admin_decision_for_request_emis_nat_currency(callback: Callb
     name_currency = data_request['name_currency']
     tick_currency = data_request['tick_currency']
     following_resource = data_request['following_resource']
-    course_following = data_request['course_following']
-    amount_emission_currency = data_request['amount_emission_currency']
-    capitalization = data_request['capitalization']
+    course_following = format_number_ultra(data_request['course_following'])
+    amount_emission_currency = format_number_ultra(data_request['amount_emission_currency'])
+    capitalization = format_number_ultra(data_request['capitalization'])
 
 
     message_decision = (

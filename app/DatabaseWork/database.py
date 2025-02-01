@@ -379,8 +379,8 @@ class DatabaseManager:
         for name_country in country_names:
             await self.insert(
                 table_name='countries',
-                columns=['name', 'admin'],
-                values=(name_country, False)
+                columns=['name', 'telegram_id', 'admin'],
+                values=(name_country, 0, False)
             )
 
     async def get_template(self, name_table: str, column_names: list, where_clause: dict = None, alone: bool = True):
@@ -396,9 +396,6 @@ class DatabaseManager:
 
         :return:
         """
-
-        if where_clause is None:
-            where_clause = {}
         if alone:
             alone_record = await self.select(
                 table_name=name_table,
@@ -411,7 +408,8 @@ class DatabaseManager:
         elif not alone:
             much_records = await self.select(
                 table_name=name_table,
-                columns=column_names
+                columns=column_names,
+                where_clause=where_clause
             )
 
             return much_records
@@ -429,7 +427,7 @@ class DatabaseManager:
             free_countries = await self.get_template(
                 name_table='countries',
                 column_names=['name'],
-                where_clause={'telegram_id': None},
+                where_clause={'telegram_id': 0},
                 alone=False
             )
 
@@ -441,7 +439,7 @@ class DatabaseManager:
             return free_countries_from_match
 
         elif busy:
-            data_countries = await self.get_template(
+            busy_countries = await self.get_template(
                 name_table='countries',
                 column_names=['name', 'telegram_id'],
                 alone=False
@@ -449,8 +447,8 @@ class DatabaseManager:
 
             busy_countries_from_match = list()
 
-            for data_country in data_countries:
-                if data_country['telegram_id']:
+            for data_country in busy_countries:
+                if data_country['telegram_id'] != 0:
                     busy_countries_from_match.append(data_country['name'])
 
             return busy_countries_from_match
@@ -589,9 +587,6 @@ class DatabaseManager:
                     os.remove(file_path)
                     count_deleted_files += 1
                     logger.info(f"Файл {file_path} удалён.")
-
-            if count_deleted_files == 0:
-                raise Exception(f"Файлы, связанные с матчем {number_match}, не найдены.")
         except Exception as error:
             logger.error(f"Ошибка при удалении диаграмм для № матча {number_match}: {error}")
 

@@ -51,15 +51,17 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
 
             elif data_country is None:
 
-                names_country = await DatabaseManager(database_path=number_match).get_countries_names(free=True)
+                free_countries_name = await DatabaseManager(database_path=number_match).get_countries_names(free=True)
+
+                print(f'free_countries_name: {free_countries_name}')
 
                 text = ''
 
                 count_names = 0
 
-                for name_country in names_country:
+                for country_name in free_countries_name:
                     count_names += 1
-                    text += f'\n{count_names}. {name_country}'
+                    text += f'\n{count_names}. {country_name}'
 
                 await state.set_state(SG.FormChoiceCountry.number_match)
                 await update_state(state, number_match=number_match)
