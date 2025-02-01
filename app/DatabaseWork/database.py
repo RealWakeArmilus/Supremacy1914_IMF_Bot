@@ -383,7 +383,7 @@ class DatabaseManager:
                 values=(name_country, False)
             )
 
-    async def get_country_names(self, free: bool = False, busy: bool = False):
+    async def get_countries_names(self, free: bool = False, busy: bool = False):
         """
         Возвращает список стран из таблицы countries
         \n\nОбязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
@@ -437,6 +437,21 @@ class DatabaseManager:
         for data_country in data_countries:
             if data_country['id'] == country_id:
                 return data_country['name']
+
+    async def get_country_telegram_id(self, country_id: int) -> int:
+        """
+        Обязательно поставьте номер матча, в DatabaseManager(database_path=number_match)
+
+        :param country_id: Id государства, по которому ищем его название
+        :return: Возвращает telegram id искомого государства
+        """
+        telegram_id = await self.select(
+            table_name='countries',
+            columns=['telegram_id'],
+            where_clause={'id': country_id}
+        )
+
+        return telegram_id[0]['telegram_id']
 
     async def get_currency_name(self, currency_id: int) -> str:
         """
@@ -789,8 +804,6 @@ class DatabaseManager:
             data_country['currency'].append(data_currency[0])
 
         return data_country
-
-
 
     async def get_data_form_emis_nat_currency_request(self, user_id: int) -> dict | None:
         """

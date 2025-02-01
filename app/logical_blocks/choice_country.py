@@ -5,7 +5,6 @@ from aiogram.types import  Message, CallbackQuery
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
-import app.keyboards.choice_country as kb
 from app.keyboards.universal import verify_request_by_admin
 from app.message_designer.deletezer import delete_message_photo, delete_message
 from app.message_designer.randomaizer import generate_custom_random_unique_word
@@ -52,7 +51,7 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
 
             elif data_country is None:
 
-                names_country = await DatabaseManager(database_path=number_match).get_country_names(free=True)
+                names_country = await DatabaseManager(database_path=number_match).get_countries_names(free=True)
 
                 text = ''
 
@@ -75,27 +74,6 @@ async def start_choice_number_match_for_game_user(callback: CallbackQuery, state
                 )
 
                 await update_state(state, message_id_delete=message_id)
-
-
-                # keyboard = await kb.free_countries_match(
-                #     input_match_hash=f'{CHOICE_COUNTRY_FROM_MATCH}_{number_match}',
-                #     number_match_db=number_match,
-                #     total_pages=10,
-                #     current_page=0
-                # )
-                #
-                # if keyboard:
-                #     await callback_utils.send_message(callback,
-                #         text=f'Выберите государство за которое играете, на карте: {number_match}.'
-                #         '<pre>Нужно указать только то государство, которым вы реально управляете в игре Supremacy1914.</pre>',
-                #         markup=keyboard
-                #     )
-                #
-                # elif keyboard is None:
-                #     await callback_utils.send_message(callback,'К сожалению в данном матче свободных государств нет.')
-                #
-                # else:
-                #     raise Exception('При обработке списка свободных государств произошла неизвестная ошибка')
 
             else:
                 raise Exception('При обработке данных из списка государств произошла неизвестная ошибка')
@@ -122,7 +100,7 @@ async def end_country_from_number_match_for_user(message: Message, state: FSMCon
         number_match = form_choice_country['number_match']
         message_id_delete = form_choice_country['message_id_delete']
 
-        names_country = await DatabaseManager(database_path=number_match).get_country_names(free=True)
+        names_country = await DatabaseManager(database_path=number_match).get_countries_names(free=True)
 
         if not names_country:
             raise ValueError("Не удалось получить список свободных государств, для сравнения с вашим введенным названием.")

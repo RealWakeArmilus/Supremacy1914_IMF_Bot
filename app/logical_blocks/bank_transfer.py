@@ -9,9 +9,8 @@ from aiogram.types import Message, CallbackQuery, FSInputFile
 import ClassesStatesMachine.SG as SG
 from ClassesStatesMachine.SG import update_state
 from app.DatabaseWork.database import DatabaseManager
-# import app.keyboards.bank_transfer as kb
 from app.keyboards.universal import launch_solution
-# from app.message_designer.formatzer import format_number
+from app.message_designer.formatzer import format_number
 from app.message_designer.deletezer import delete_message
 from app.message_designer.chartzer import create_chart_currency_capitals_from_country
 from app.utils import callback_utils
@@ -62,7 +61,7 @@ async def start_bank_transfer(callback: CallbackQuery, state: FSMContext, number
         await state.set_state(SG.FormBankTransferRequest.payer_country_id)
         await update_state(state, payer_country_id=payer_country_id)
 
-        names_country = await DatabaseManager(database_path=number_match).get_country_names(busy=True)
+        names_country = await DatabaseManager(database_path=number_match).get_countries_names(busy=True)
         ignor_country_name = payer_country_name
 
         new_names_country = []
@@ -127,7 +126,7 @@ async def input_name_currency_for_bank_transfer(message: Message, state: FSMCont
         number_match = form_choice_country['number_match']
         message_id_delete = form_choice_country['message_id_delete']
 
-        names_country = await DatabaseManager(database_path=number_match).get_country_names(busy=True)
+        names_country = await DatabaseManager(database_path=number_match).get_countries_names(busy=True)
 
         if not names_country:
             raise ValueError(
@@ -438,108 +437,138 @@ async def end_bank_transfer(message: Message, state: FSMContext):
         await callback_utils.handle_exception(message, 'end_bank_transfer', error, '❌ <b>Ошибка на этапе комментария.</b>')
 
 
-@router.callback_query(F.data == PREFIXES['CONFIRM'])
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES['CONFIRM']}_'))
 async def confirm_form_bank_transfer(callback: CallbackQuery, state: FSMContext):
     """
     Подтверждение заполненной формы эмиссии национальной валюты.
     """
     data_bank_transfer_request = await state.get_data()
 
-    number_match = data_bank_transfer_request['number_match']
-    payer_country_id = data_bank_transfer_request['payer_country_id']
-    beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
-    currency_id = data_bank_transfer_request['currency_id']
-    amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
-    comment = data_bank_transfer_request['comment']
-    date_request_creation = data_bank_transfer_request['date_request_creation']
-    status_cancelled = data_bank_transfer_request['status_cancelled']
-    date_cancelled = data_bank_transfer_request['date_cancelled']
-    message_id_delete = data_bank_transfer_request['message_id_delete']
+    if not data_bank_transfer_request:
 
-    await delete_message(
-        bot=callback.bot,
-        message_chat_id=callback.message.chat.id,
-        send_message_id=message_id_delete
-    )
-
-    await DatabaseManager(database_path=number_match).register_bank_transfer(
-        number_match=number_match,
-        payer_country_id=payer_country_id,
-        beneficiary_country_id=beneficiary_country_id,
-        currency_id=currency_id,
-        amount_currency_transfer=amount_currency_transfer,
-        comment=comment,
-        date_request_creation=date_request_creation,
-        status_cancelled=status_cancelled,
-        date_cancelled=date_cancelled
-    )
-
-    await state.clear()
-
-    data_bank_transfer_request = await DatabaseManager(database_path=number_match).get_bank_transfer(
-        payer_country_id=payer_country_id,
-        date_request_creation=date_request_creation
-    )
-
-    logger.info(f'data_bank_transfer_request from get_bank_transfer: {data_bank_transfer_request}')
-
-    await DatabaseManager(database_path=number_match).execution_bank_transfer(
-        data_bank_transfer_request=data_bank_transfer_request
-    )
-
-    payer_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['payer_country_id'])
-    beneficiary_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['beneficiary_country_id'])
-    currency_name = await DatabaseManager(database_path=number_match).get_currency_name(currency_id=data_bank_transfer_request['currency_id'])
-
-    try:
-        status_payer = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
-            number_match=number_match,
-            country_id=payer_country_id,
-            currency_id=currency_id,
-            currency_name=currency_name,
-            amount_currency_transfer=amount_currency_transfer,
-            payer=True
+        await callback_utils.send_message(callback=callback,
+            text='Возникла ошибка. Попробуйте повторить вашу банковскую операцию.'
         )
 
-        if not status_payer:
-            status_beneficiary = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
+        number_match = callback_utils.parse_callback_data(callback.data, PREFIXES['CONFIRM'])[0]
+        await start_bank_transfer(callback, state, number_match=number_match)
+
+    elif data_bank_transfer_request:
+
+        number_match = data_bank_transfer_request['number_match']
+        payer_country_id = data_bank_transfer_request['payer_country_id']
+        beneficiary_country_id = data_bank_transfer_request['beneficiary_country_id']
+        currency_id = data_bank_transfer_request['currency_id']
+        amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
+        comment = data_bank_transfer_request['comment']
+        date_request_creation = data_bank_transfer_request['date_request_creation']
+        status_cancelled = data_bank_transfer_request['status_cancelled']
+        date_cancelled = data_bank_transfer_request['date_cancelled']
+        message_id_delete = data_bank_transfer_request['message_id_delete']
+
+        await delete_message(
+            bot=callback.bot,
+            message_chat_id=callback.message.chat.id,
+            send_message_id=message_id_delete
+        )
+
+        await DatabaseManager(database_path=number_match).register_bank_transfer(
+            number_match=number_match,
+            payer_country_id=payer_country_id,
+            beneficiary_country_id=beneficiary_country_id,
+            currency_id=currency_id,
+            amount_currency_transfer=amount_currency_transfer,
+            comment=comment,
+            date_request_creation=date_request_creation,
+            status_cancelled=status_cancelled,
+            date_cancelled=date_cancelled
+        )
+
+        await state.clear()
+
+        data_bank_transfer_request = await DatabaseManager(database_path=number_match).get_bank_transfer(
+            payer_country_id=payer_country_id,
+            date_request_creation=date_request_creation
+        )
+
+        logger.info(f'data_bank_transfer_request from get_bank_transfer: {data_bank_transfer_request}')
+
+        await DatabaseManager(database_path=number_match).execution_bank_transfer(
+            data_bank_transfer_request=data_bank_transfer_request
+        )
+
+        payer_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['payer_country_id'])
+        beneficiary_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=data_bank_transfer_request['beneficiary_country_id'])
+        currency_name = await DatabaseManager(database_path=number_match).get_currency_name(currency_id=data_bank_transfer_request['currency_id'])
+
+        try:
+            status_payer = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
                 number_match=number_match,
-                country_id=beneficiary_country_id,
+                country_id=payer_country_id,
                 currency_id=currency_id,
                 currency_name=currency_name,
                 amount_currency_transfer=amount_currency_transfer,
-                beneficiary=True
+                payer=True
             )
 
-            if not status_beneficiary:
-                logger.info('payer и beneficiary не являются эмитентами искомой валюты')
-            elif status_beneficiary is None:
-                raise Exception('Данные beneficiary при подтверждении эмитента по банковскому переводу пусты!')
-        elif status_payer is None:
-            raise Exception('Данные payer при подтверждении эмитента по банковскому переводу пусты!')
-    except Exception as error:
-        logger.error(f'Ошибка в confirm_form_bank_transfer: {error}')
+            if not status_payer:
+                status_beneficiary = await DatabaseManager(database_path=number_match).update_amount_national_currency_for_issuer(
+                    number_match=number_match,
+                    country_id=beneficiary_country_id,
+                    currency_id=currency_id,
+                    currency_name=currency_name,
+                    amount_currency_transfer=amount_currency_transfer,
+                    beneficiary=True
+                )
 
-    finally_message_bank_transfer = (
-        f'<b>№ Банковского перевода: {data_bank_transfer_request['id']}</b>\n'
-        f'<b>Статус:</b> Успешно✅\n\n'
-        f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
-        f'<b>Ваше государство:</b> {payer_country_name}\n'
-        f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
-        '<i>Проверьте правильно ли заполнены данные, по вашему переводу:</i>'
-        '<blockquote>'
-            f"<b>Матч:</b> {data_bank_transfer_request['number_match']}\n"
-            f"<b>Отправитель:</b> {payer_country_name}\n"
-            f"<b>Получатель:</b> {beneficiary_country_name}\n"
-            f"<b>Название валюты:</b> {currency_name}\n"
-            f"<b>Объем перевода:</b> {data_bank_transfer_request['amount_currency_transfer']}\n"
-            f"<b>Комментарий:</b> {data_bank_transfer_request['comment']}\n"
-        '</blockquote>'
-    )
+                if not status_beneficiary:
+                    logger.info('payer и beneficiary не являются эмитентами искомой валюты')
+                elif status_beneficiary is None:
+                    raise Exception('Данные beneficiary при подтверждении эмитента по банковскому переводу пусты!')
+            elif status_payer is None:
+                raise Exception('Данные payer при подтверждении эмитента по банковскому переводу пусты!')
+        except Exception as error:
+            logger.error(f'Ошибка в confirm_form_bank_transfer: {error}')
 
-    await callback_utils.send_message(callback=callback,
-        text=finally_message_bank_transfer,
-    )
+        finally_message_bank_transfer_for_payer = (
+            f'<b>№ Банковского перевода: {data_bank_transfer_request['id']}</b>\n'
+            f'<b>Статус:</b> Успешно✅\n\n'
+            f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
+            f'<b>Ваше государство:</b> {payer_country_name}\n'
+            f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
+            '<blockquote>'
+                f"<b>Матч:</b> {data_bank_transfer_request['number_match']}\n"
+                f"<b>Отправитель:</b> {payer_country_name}\n"
+                f"<b>Получатель:</b> {beneficiary_country_name}\n"
+                f"<b>Название валюты:</b> {currency_name}\n"
+                f"<b>Объем перевода:</b> {format_number(data_bank_transfer_request['amount_currency_transfer'])}\n"
+                f"<b>Комментарий:</b> {data_bank_transfer_request['comment']}\n"
+            '</blockquote>'
+        )
+
+        await callback_utils.send_message(callback=callback,
+            text=finally_message_bank_transfer_for_payer,
+        )
+
+        beneficiary_message = (
+            f'<b>Банковский перевод:</b>\n'
+            f'<blockquote>'
+                f'<b>№ матча:</b> {data_bank_transfer_request['number_match']}\n'
+                f'<b>Ваше государство:</b> {beneficiary_country_name}\n'
+                f'<b>Дата заявки:</b> {data_bank_transfer_request['date_request_creation']}\n\n'
+                f'<b>Вам насчет поступило:</b> {format_number(data_bank_transfer_request['amount_currency_transfer'])} {currency_name}\n\n'
+                f'<b>Отправитель:</b> {payer_country_name}\n'
+                f'<b>Комментарий:</b> {data_bank_transfer_request['comment']}'
+            f'</blockquote>'
+        )
+
+        beneficiary_country_telegram_id = await DatabaseManager(database_path=number_match).get_country_telegram_id(country_id=beneficiary_country_id)
+
+        await callback.bot.send_message(
+            chat_id=beneficiary_country_telegram_id,
+            text=beneficiary_message,
+            parse_mode="html"
+        )
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{PREFIXES["RESTART"]}_'))

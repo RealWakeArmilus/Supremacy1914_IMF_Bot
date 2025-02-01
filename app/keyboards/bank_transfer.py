@@ -15,7 +15,7 @@ async def busy_countries_match(ignor_country_name: str, input_match_hash: str, n
     :param number_match_db: номер матча
     :return:
     """
-    names_country = await DatabaseManager(database_path=number_match_db).get_country_names(busy=True)
+    names_country = await DatabaseManager(database_path=number_match_db).get_countries_names(busy=True)
 
     if names_country:
 

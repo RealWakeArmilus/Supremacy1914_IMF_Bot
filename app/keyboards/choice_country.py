@@ -39,7 +39,7 @@ async def free_countries_match(input_match_hash: str, number_match_db: str) -> I
     :param number_match_db:
     :return:
     """
-    names_country = await DatabaseManager(database_path=number_match_db).get_country_names(free=True)
+    names_country = await DatabaseManager(database_path=number_match_db).get_countries_names(free=True)
 
     if names_country:
 

@@ -120,7 +120,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-database/master.db
+database
 .env
 .venv
 env/
