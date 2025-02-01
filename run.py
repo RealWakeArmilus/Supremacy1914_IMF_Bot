@@ -29,7 +29,7 @@ async def main():
 
 if __name__ == "__main__":
 
-    view_logger = False
+    view_logger = True
 
     log_processing(view_logger)
 

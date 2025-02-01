@@ -338,7 +338,7 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
         if not data_country:
             raise ValueError("Не удалось получить данные страны.")
 
-        await message.answer(callback=message,
+        sent_message = await message.answer(callback=message,
             text=f'<b>№ матча:</b> {number_match}\n'
             f'<b>Ваше государство:</b> {data_country['name_country']}\n\n'
             f'<b>Вы указали:</b> {amount_currency:,} {current_data_currency['currency_name']} ({current_data_currency['currency_tick']})\n\n'
@@ -346,7 +346,7 @@ async def input_comment_for_bank_transfer(message: Message, state: FSMContext):
             parse_mode='html'
         )
 
-        await update_state(state, message_id_delete=message.message_id)
+        await update_state(state, message_id_delete=sent_message.message_id)
     except (ValueError, Exception) as error:
         await callback_utils.handle_exception(message, 'input_comment_for_bank_transfer', error, '❌ <b>Ошибка на этапе выбора объема перевода.</b>')
 
@@ -357,6 +357,15 @@ async def end_bank_transfer(message: Message, state: FSMContext):
     Проверка введенного тикера валюты и выбор ресурса за которым будет закреплена валюта
     """
     try:
+        data_bank_transfer_request = await state.get_data()
+        message_id_delete = data_bank_transfer_request['message_id_delete']
+
+        await delete_message(
+            bot=message.bot,
+            message_chat_id=message.chat.id,
+            send_message_id=message_id_delete
+        )
+
         input_comment = message.text.strip().lower()
         if (len(input_comment) < 10) or (len(input_comment) > 70):
             raise Exception(
@@ -394,13 +403,7 @@ async def end_bank_transfer(message: Message, state: FSMContext):
         amount_currency_transfer = data_bank_transfer_request['amount_currency_transfer']
         comment = data_bank_transfer_request['comment']
         date_request_creation = data_bank_transfer_request['date_request_creation']
-        message_id_delete = data_bank_transfer_request['message_id_delete']
 
-        await delete_message(
-            bot=message.bot,
-            message_chat_id=message.chat.id,
-            send_message_id=message_id_delete
-        )
 
         payer_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=payer_country_id)
         beneficiary_country_name = await DatabaseManager(database_path=number_match).get_country_name(country_id=beneficiary_country_id)
