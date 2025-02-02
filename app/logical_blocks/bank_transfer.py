@@ -61,12 +61,12 @@ async def start_bank_transfer(callback: CallbackQuery, state: FSMContext, number
         await state.set_state(SG.FormBankTransferRequest.payer_country_id)
         await update_state(state, payer_country_id=payer_country_id)
 
-        names_country = await DatabaseManager(database_path=number_match).get_countries_names(busy=True)
+        busy_countries_names = await DatabaseManager(database_path=number_match).get_countries_names(busy=True)
         ignor_country_name = payer_country_name
 
         new_names_country = []
 
-        for name_country in names_country:
+        for name_country in busy_countries_names:
             if name_country != ignor_country_name:
                 new_names_country.append(name_country)
 
@@ -195,8 +195,6 @@ async def input_name_currency_for_bank_transfer(message: Message, state: FSMCont
             data_currency_capitals=data_currency_capitals_from_country
         )
 
-
-
         chart_path = name_chart
         photo_chart = FSInputFile(chart_path)
 
@@ -209,6 +207,10 @@ async def input_name_currency_for_bank_transfer(message: Message, state: FSMCont
         await update_state(state, message_id_delete=message.message_id)
 
         await state.set_state(SG.FormBankTransferRequest.currency_id)
+
+        await DatabaseManager(database_path=number_match).delete_charts_from_match(
+            number_match=number_match
+        )
 
     except (ValueError, Exception) as error:
         await callback_utils.handle_exception(message, 'input_name_currency_for_bank_transfer', error, '❌ <b>Ошибка на этапе выбора бенефициара.</b>')

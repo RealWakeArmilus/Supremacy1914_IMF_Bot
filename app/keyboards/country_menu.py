@@ -6,6 +6,8 @@ async def now_country_menu(number_match: str, status_emission: bool = False) -> 
 
     builder = InlineKeyboardBuilder()
 
+    builder.add(InlineKeyboardButton(text=str('Статистика'), callback_data=f'MenuStatistic_{number_match}'))
+
     if status_emission is False:
         builder.add(InlineKeyboardButton(text=str('Эмиссия национальной валюты'), callback_data=f'EmissionNationalCurrency_{number_match}'))
     elif status_emission:
@@ -48,4 +50,19 @@ async def lobby_bank_transfer_menu(number_match: str, message_id_delete: int = N
 
     return builder.as_markup()
 
+
+async def lobby_statistic_menu(number_match: str, message_id_delete: int = None) -> InlineKeyboardMarkup:
+    """
+    :param number_match:
+    :param message_id_delete:
+    :return: меню для лобби банковских переводов
+    """
+    builder = InlineKeyboardBuilder()
+
+    builder.add(InlineKeyboardButton(text=str('Государства'), callback_data=f'Countries_{number_match}'))
+    builder.add(InlineKeyboardButton(text=str('Назад'), callback_data=f'CountryMenu_{number_match}_{message_id_delete}'))
+
+    builder.adjust(1)
+
+    return builder.as_markup()
 
