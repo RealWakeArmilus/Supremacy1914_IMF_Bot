@@ -15,15 +15,18 @@ router = Router()
 # import routers from logical_blocks
 from app.logical_blocks.emission_national_currency import router as emission_national_currency_router
 from app.logical_blocks.bank_transfer import router as bank_transfer_router
+from app.logical_blocks.statistic import router as statistic_router
 
 # connect routers from logical_blocks
 router.include_router(emission_national_currency_router)
 router.include_router(bank_transfer_router)
+router.include_router(statistic_router)
 
 
 COUNTRY_MENU = "CountryMenu"
 EMISSION_NATIONAL_CURRENCY = "EmissionNationalCurrency"
 BANK_TRANSFER = 'BankTransfer'
+STATISTIC = 'MenuStatistic'
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith(f'{COUNTRY_MENU}_'))
@@ -65,8 +68,10 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
                 number=characteristics_country['currency'][0]['current_course'],
                 course=True
             )} "
-            f"{characteristics_country['currency'][0]['following_resource']}"
-            f"\n<b>Текущий запас валюты:</b> {format_number_ultra(characteristics_country['currency'][0]['current_amount'])} "
+            f"{characteristics_country['currency'][0]['following_resource']}\n\n"
+            f"<b>Общая эмиссия:</b> {format_number_ultra(characteristics_country['currency'][0]['emission'])} "
+            f"{characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})\n"
+            f"<b>Текущий запас валюты:</b> {format_number_ultra(characteristics_country['currency'][0]['current_amount'])} "
             f"{characteristics_country['currency'][0]['name']} ({characteristics_country['currency'][0]['tick']})"
         )
     except Exception as error:
@@ -76,7 +81,7 @@ async def start_country_menu(callback: CallbackQuery, number_match: str = None):
         if characteristics_country:
             characteristics = (
                 f'<b>№ Матча:</b> {number_match}\n'
-                f'<b>Ваше Государство:</b> {name_country}\n'
+                f'<b>Ваше Государство:</b> {name_country}\n\n'
                 f'<b>Валюта:</b> {currency_info}'
             )
 
@@ -153,6 +158,7 @@ async def lobby_bank_transfer(callback: CallbackQuery):
     message_id = callback.message.message_id
 
     await callback_utils.notify_user(callback, 'Вы выбрали раздел "Банковские переводы"')
+
     if not number_match:
         await callback_utils.handle_error(callback, ValueError("Отсутствует номер матча."), 'Некорректные данные.')
         return
@@ -168,8 +174,7 @@ async def lobby_bank_transfer(callback: CallbackQuery):
             message_id_delete=message_id
         )
 
-        await callback_utils.send_edit_message(
-            callback,
+        await callback_utils.send_edit_message(callback,
             'Банковские переводы это:'
             '<blockquote>'
             'Перевод валют(ы) из капитала вашего государства, в капитал другого государства '
@@ -182,3 +187,33 @@ async def lobby_bank_transfer(callback: CallbackQuery):
 
 
 
+@router.callback_query(lambda c: c.data and c.data.startswith(f'{STATISTIC}_'))
+async def lobby_statistic(callback: CallbackQuery):
+
+    number_match = callback_utils.parse_callback_data(callback.data, STATISTIC)[0]
+    message_id = callback.message.message_id
+
+    await callback_utils.notify_user(callback, 'Вы выбрали раздел "Статистика"')
+
+    if not number_match:
+        await callback_utils.handle_error(callback, ValueError("Отсутствует номер матча."), 'Некорректные данные.')
+        return
+
+    if message_id is None:
+        await callback_utils.handle_error(callback, ValueError("Идентификатор сообщения отсутствует."),
+                                          'Не удалось получить сообщение.')
+        return
+
+    try:
+        keyboard = await kb.lobby_statistic_menu(
+            number_match=number_match,
+            message_id_delete=message_id
+        )
+
+        await callback_utils.send_edit_message(callback,
+            text = '<b>Нажмите кнопку той статистики которая вас интересует:</b>',
+            markup=keyboard
+        )
+    except Exception as error:
+        await callback_utils.handle_error(callback, error,
+                                          'Не удалось обновить сообщение при выходе из раздела "Статистика"')
