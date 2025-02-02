@@ -586,7 +586,7 @@ class DatabaseManager:
                 if file_name.startswith(number_match) and file_name.endswith('.png'):
                     os.remove(file_path)
                     count_deleted_files += 1
-                    logger.info(f"Файл {file_path} удалён.")
+                    logger.info(f"Файлов {file_path} удалёно: {count_deleted_files} ед.")
         except Exception as error:
             logger.error(f"Ошибка при удалении диаграмм для № матча {number_match}: {error}")
 

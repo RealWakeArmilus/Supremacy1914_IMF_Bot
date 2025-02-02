@@ -50,7 +50,7 @@ async def cmd_admin(message: Message):
 
         await message.answer(
             f'<b>Здравствуйте администратор:</b> {message.from_user.full_name}.\n'
-            f'<b>Версия бота:</b> 0.1.1.1 (tick44.1)',
+            f'<b>Версия бота:</b> 0.1.3 (tick46)',
             reply_markup=kb_handlers.admin_menu,
             parse_mode='html')
 
