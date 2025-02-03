@@ -1,15 +1,15 @@
-import asyncio, logging, sys
+import asyncio
+import logging
+import sys
 from app.config import bot, dp
-
 from app.scheduler import run_scheduler
-
 from app.handlers import router
 
 
 # Вывод действий бота в консоль
 def log_processing(state_status : bool):
     """
-    :param state_status: Выкл/Вкл - включать при debug, выключать при продакшене
+    :param state_status: Вкл/Выкл - включать при debug, выключать при продакшене
     """
 
     if state_status:
