@@ -4,6 +4,7 @@ import sys
 from app.config import bot, dp
 from app.scheduler import run_scheduler
 from app.handlers import router
+from test.Score_script import analyze_loop
 
 
 # Вывод действий бота в консоль
@@ -23,8 +24,15 @@ async def main():
     # Запуск планировщика
     asyncio.create_task(run_scheduler())
 
+    start_analyze_loop = False
+
+    if start_analyze_loop:
+        asyncio.create_task(analyze_loop())
+
     # Запуск бота
     await dp.start_polling(bot)
+
+
 
 
 if __name__ == "__main__":

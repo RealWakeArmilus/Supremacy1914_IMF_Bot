@@ -20,8 +20,9 @@ class SavePhotoMessageID(StatesGroup):
 
 
 class FormCreatedMatch(StatesGroup):
-    number = State()
-    type = State()
+    number_match = State()
+    id_user_owner_match = State()
+    type_map = State()
 
 
 class FormChoiceCountry(StatesGroup):
