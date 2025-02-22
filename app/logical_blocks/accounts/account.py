@@ -56,7 +56,7 @@ async def start_open_account(callback: CallbackQuery, state: FSMContext):
         count_premium = data_user['count_premium']
     elif data_user['is_owner']:
         keyboard_task = kb.StartMenuAccount().owner()
-        status = 'Owner'
+        status = 'Owner - v. 0.2.1.1'
         count_premium = data_user['count_premium']
     else:
         keyboard_task = None
