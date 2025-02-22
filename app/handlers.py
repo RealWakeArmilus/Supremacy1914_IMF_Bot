@@ -1,116 +1,154 @@
 from aiogram import Router
 from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+import logging
 
 # import keyboards
-import app.keyboards.handlers as kb_handlers
-import app.keyboards.settings_match as kb_settings_match
+import app.keyboards.lobby as kb_lobby
 
 # import verify
 import app.verify.checks as checks
-import app.verify.admin as admin
 
 # import ClassState
-import ClassesStatesMachine.SG as SG
-from app.DatabaseWork.database import DatabaseManager
+from app.decorators.message import MessageManager
+from app.config import CHANNEL_USERNAME
 
+# ManagerDatabase
+from app.DatabaseWork.models_master import UserManager
+from app.DatabaseWork.models_master import MatchesManager
+from app.DatabaseWork.models_match import MatchManager
 
 # Для передачи сигнала в данный файл, что запуск команд идет здесь
+logger = logging.getLogger(__name__)
 router = Router()
+user_manager = UserManager()
 
 # import routers from logical_blocks
-from app.logical_blocks.created_match import router as created_match_router
+from app.logical_blocks.accounts.account import router as account_router
+from app.logical_blocks.accounts.owner.created_match import router as created_match_router
 from app.logical_blocks.settings_match import router as settings_match_router
 from app.logical_blocks.choice_country import router as choice_state_router
 
 # connect routers from logical_blocks
+router.include_router(account_router)
 router.include_router(created_match_router)
 router.include_router(settings_match_router)
 router.include_router(choice_state_router)
 
 
-@router.message(Command('initialize_bot1243'))
-async def cmd_admin(message: Message):
-
+@router.message(Command('test'))
+async def cmd_start(message: Message):
     try:
-        await DatabaseManager().initialize_master()
+        number_match = 1234567
+        type_map = 'Великая война'
+
+        master_match_manager = MatchesManager()
+        created_num = await master_match_manager.create_match(
+            number_match=number_match,
+            type_map=type_map
+        )
+        logger.info(f'created_num: {created_num}')
+
+        if not created_num:
+            raise Exception("Ошибка: матч не был записан в test_master.db!")
+
+        match_manager = MatchManager()
+        await match_manager.initialize_match(number_match=number_match)
     except Exception as error:
-        await message.answer(text=f'Инициализация бота прошла с ошибкой: {error}')
-
-    await message.answer(text='Инициализация бота прошла успешно!')
-
-
-@router.message(Command('admin'))
-async def cmd_admin(message: Message):
-
-    status_type_user = await admin.verify(message.chat.type, message.chat.id, message.from_user.id)
-
-    if status_type_user == admin.Status.TypeUser.ADMIN:
-
-        await message.answer(
-            f'<b>Здравствуйте администратор:</b> {message.from_user.full_name}.\n'
-            f'<b>Версия бота:</b> 0.1.3.4 (tick48)',
-            reply_markup=kb_handlers.admin_menu,
-            parse_mode='html')
-
-    elif status_type_user == admin.Status.TypeUser.SIMPLE:
-
-        await message.answer('Вы не являетесь администратором.')
-
-    else:
-
-        pass
+        await message.answer(str(error))
 
 
 @router.message(Command('start'))
 async def cmd_start(message: Message, state: FSMContext):
+    if message.chat.type != 'private' or message.from_user.is_bot:
+        return
 
-    status_type_chat = await checks.identify_chat_type(message.chat.type)
+    user_id = message.from_user.id
 
-    if status_type_chat == checks.Status.TypeChat.USER:
+    logger.info('📶get_user from /start: connect')
 
-        if await kb_settings_match.numbers_match():
+    get_user_task = user_manager.get_user(telegram_id=user_id)
+    is_subscribed_task = checks.identify_subscription(bot=message.bot, user_id=user_id)
 
-            photo_path = 'image/exemple_number_match.jpg'
-            photo = FSInputFile(photo_path)
+    data_user = await get_user_task
+    is_subscribed = await is_subscribed_task
 
-            await message.answer(
-                text='Здравствуйте! Создатель этого бота: <a href="https://t.me/L_e_m_b_e_r_g_w_a_k_e">_L_e_m_</a>',
-                parse_mode='html'
-            )
+    if data_user is None:
+        text = (
+            '<b>Используя бот вы соглашаетесь соблюдать следующие условия:</b>\n\n'
+            '<i><a href="ссылка">Пользовательское соглашение</a></i>\n'
+            '<i><a href="ссылка">Политика конфиденциальности</a></i>'
+        )
+        await message.answer(
+            text=text,
+            parse_mode='html'
+        )
 
-            sent_message = await message.answer_photo(
-                photo,
-                'Выберите <b>Номер матча</b> из списка ниже.'
-                '\n<pre>Узнать номер матча можно в игре supremacy1914, как указано на скрине.</pre>',
-                reply_markup=await kb_settings_match.numbers_match('ChoiceMatchForUser'),
-                parse_mode='html')
+        logger.info('📶set_user from /start: connect')
+        await user_manager.set_user(
+            telegram_id=user_id,
+            username=message.from_user.username,
+            first_name=message.from_user.first_name,
+            last_name=message.from_user.last_name,
+            start_premium=None,
+            end_premium=None,
+            count_premium=0
+        )
 
-            # Сохранение message_id фотографии в состоянии пользователя
-            await state.set_state(SG.SavePhotoMessageID.photo_message_id.state)
-            await state.update_data(photo_message_id=sent_message.message_id)
+    # Проверяем подписку перед взаимодействием с БД
+    if not is_subscribed:
+        text = (
+            "Продолжай быть в курсе событий нашего проекта - подпишись на наш телеграмм канал "
+            "<b>Supremacy1914_IMF_Channel</b> 😉💫\n\n"
+            "Мы тут общаемся, обсуждаем нововведения и находим новых друзей или команду!\n\n"
+            "Присоединяйся по ссылке: https://t.me/Supremacy1914_IMF_Channel ✨\n\n"
+            "<b>Чтобы продолжить необходимо подписаться</b>\n\n"
+        )
 
-        else:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Подписаться", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")],
+            [InlineKeyboardButton(text="Продолжить", callback_data="check_sub")]
+        ])
 
-            await message.answer(
-                'Здравствуйте!'
-                '\nНа текущий момент игровых сессий не существует.'
-                '\nНапишите <a href="https://t.me/L_e_m_b_e_r_g_w_a_k_e">администратору</a> чтобы он её создал.',
-                parse_mode='html')
+        await message.answer(text=text, reply_markup=keyboard, parse_mode='html')
+        return
 
-    else:
-
-        pass
+    await menu_open(message, state)
 
 
-@router.message(Command('send_video'))
-async def cmd_start(message: Message):
-
-    video_path = 'image/video_test.mp4'
-    video = FSInputFile(video_path)
-
-    await message.answer_video(
-        video=video,
-        caption='Описание под видео'
+@router.callback_query(lambda c: c.data == "check_sub")
+async def check_sub_again(callback: CallbackQuery, state: FSMContext):
+    """Обработчик кнопки "Я подписался"""
+    user_id = callback.from_user.id
+    is_subscribed = await checks.identify_subscription(
+        bot=callback.message.bot,
+        user_id=user_id
     )
+
+    if is_subscribed:
+        await menu_open(callback.message, state)
+    else:
+        await callback.answer("❌ Вы еще не подписались!", show_alert=True)
+
+
+@router.message(Command('menu'))
+async def menu_open(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    is_subscribed = await checks.identify_subscription(
+        bot=message.bot,
+        user_id=user_id
+    )
+
+    if is_subscribed:
+        photo_path = 'image/logo.png'
+        keyboard = await kb_lobby.main_lobby()
+
+        # Используем класс MessageManager для отправки сообщения
+        message_manager = MessageManager(bot=message.bot, state=state)
+        await message_manager.send_photo(
+            obj=message,
+            photo_path=photo_path,
+            keyboard=keyboard
+        )
+
