@@ -84,6 +84,7 @@ async def setting_matches_for_owner(callback: CallbackQuery, state: FSMContext):
     """Меню настройки матчей для Владельца"""
     await callback.answer()
 
+    event = callback_utils.parse_callback_data(callback.data, PREFIXES["SETTING"])[0]
     message_manager = MessageManager(bot=callback.bot, state=state)
     keyboard = await kb.menu_setting_matches()
 
@@ -91,7 +92,8 @@ async def setting_matches_for_owner(callback: CallbackQuery, state: FSMContext):
         obj=callback,
         text='<b>Настройки матча</b>',
         keyboard=keyboard,
-        remove_previous=True
+        remove_previous=True,
+        clear_state_all_exception_photo_message_id=True if event == 'back' else False
     )
 
 
@@ -199,8 +201,12 @@ async def choice_type_map(callback: CallbackQuery, state: FSMContext):
 async def confirm_match_creation(callback: CallbackQuery, state: FSMContext):
     """Подтверждает создание матча и записывает его в базу данных."""
     try:
-        await callback_utils.send_edit_message(callback,
-            'Запускаем создание необходимой среды для вашего матча.'
+        message_manager = MessageManager(bot=callback.message.bot, state=state)
+
+        await message_manager.send_photo(
+            obj=callback,
+            text='Запускаем создание необходимой среды для вашего матча.',
+            remove_previous=True
         )
 
         data_created_match = await state.get_data()
@@ -238,10 +244,13 @@ async def confirm_match_creation(callback: CallbackQuery, state: FSMContext):
         except Exception as error:
             await callback.message.answer(str(error))
 
-        await state.clear()
+        message_manager = MessageManager(bot=callback.message.bot, state=state)
 
-        await callback_utils.send_edit_message(callback,
-            f'<b>Необходимая среда для матча:</b> {data_created_match["number_match"]} <b>создана.</b>'
+        await message_manager.send_photo(
+            obj=callback,
+            text=f'<b>Необходимая среда для матча:</b> {data_created_match["number_match"]} <b>создана.</b>',
+            remove_previous=True,
+            clear_state_all_exception_photo_message_id=True
         )
     except Exception as error:
         await callback_utils.handle_exception(callback, 'confirm_match_creation', error, '❌ Произошла ошибка при создании среды для матча. Попробуйте позже.')
@@ -266,3 +275,4 @@ async def restart_match_creation(callback: CallbackQuery, state: FSMContext):
 
     # Запускаем процесс создания матча
     await start_created_match(callback, state)
+
