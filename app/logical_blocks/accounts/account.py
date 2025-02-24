@@ -49,7 +49,7 @@ async def start_open_account(callback: CallbackQuery, state: FSMContext):
         status = 'Admin'
     elif data_user['is_owner']:
         keyboard_task = kb.StartMenuAccount().owner()
-        status = 'Owner - v. 0.2.2'
+        status = 'Owner - v. 0.2.2.4'
     else:
         keyboard_task = None
         status = '???'
