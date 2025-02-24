@@ -24,6 +24,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            margin: 10px;
         }
     </style>
 </head>
@@ -33,6 +34,7 @@
         <h2>Ваши сертификаты</h2>
         <p id="user-info">Загрузка...</p>
         <button onclick="closeWebApp()">Закрыть</button>
+        <button onclick="openUserAgreement()">Пользовательское соглашение</button>
     </div>
 
     <script>
@@ -50,6 +52,11 @@
         // Функция закрытия WebApp
         function closeWebApp() {
             tg.close();
+        }
+
+        // Функция открытия страницы "Пользовательское соглашение"
+        function openUserAgreement() {
+            window.location.href = "documents_bot.user_agreement.html";
         }
     </script>
 
