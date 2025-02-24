@@ -78,28 +78,28 @@ class MatchManager(DatabaseManager):
             await init_match_db(number_match=number_match)
 
             countries = []
-            imf_country = None  # Переменная для страны IMF
+            imf_country_name = None  # Переменная для страны IMF
 
             # Разворачиваем frozenset в обычный список
             for region_dict in type_map.get('Великая война', []):
                 for region_name, country_list in region_dict.items():
-                    for country in country_list:
+                    for country_name in country_list:
                         countries.append({
                             'economic_zone': region_name,  # Экономическая зона (регион)
-                            'country_name': country,  # Название страны
+                            'country_name': country_name,  # Название страны
                             'telegram_id': id_user_owner_match if region_name == "IMF" else 0,  # Присваиваем владельцу, если это IMF
                             'admin': False,  # Админские привилегии
                             'imf': True if region_name == "IMF" else False
                         })
 
                         if region_name == "IMF":
-                            imf_country = country
+                            imf_country_name = country_name
 
             await self.insert(Countries, countries)
 
             # Если IMF есть, создаем валюту virtual_silver (VS) для этой страны
-            if imf_country:
-                imf_country_obj = await Countries.get(country_name=imf_country)  # Получаем объект страны IMF
+            if imf_country_name:
+                imf_country_obj = await Countries.get(country_name=imf_country_name)  # Получаем объект страны IMF
 
                 currencies = [
                     {

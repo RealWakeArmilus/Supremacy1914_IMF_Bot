@@ -10,16 +10,6 @@ class StartMenuAccount:
         builder = self.builder
         builder.add(InlineKeyboardButton(text=str('Пригласить друга и получить 50💎'), callback_data=f'ReferralLink'))
         builder.add(InlineKeyboardButton(text=str('Пополнить баланс на 150💎'), callback_data=f'UpBalance'))
-        builder.add(InlineKeyboardButton(text=str('Приобрести Premium'), callback_data=f'BecomePremium'))
-        builder.add(InlineKeyboardButton(text=str('Стать Partner'), callback_data=f'BecomePartner'))
-        builder.add(InlineKeyboardButton(text=str('Назад в меню'), callback_data=f'menu'))
-        builder.adjust(1)
-        return builder.as_markup()
-
-    async def premium(self) -> InlineKeyboardMarkup:
-        builder = self.builder
-        builder.add(InlineKeyboardButton(text=str('Пригласить друга и получить 50💎'), callback_data=f'ReferralLink'))
-        builder.add(InlineKeyboardButton(text=str('Пополнить баланс на 150💎'), callback_data=f'UpBalance'))
         builder.add(InlineKeyboardButton(text=str('Активировать Premium'), callback_data=f'BecomePremium'))
         builder.add(InlineKeyboardButton(text=str('Приобрести Premium'), callback_data=f'BecomePremium'))
         builder.add(InlineKeyboardButton(text=str('Стать Partner'), callback_data=f'BecomePartner'))

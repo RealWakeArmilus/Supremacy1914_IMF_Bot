@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сертификаты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .container {
+            padding: 20px;
+            background: #f4f4f4;
+            border-radius: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Ваши сертификаты</h2>
+        <p id="user-info">Загрузка...</p>
+        <button onclick="closeWebApp()">Закрыть</button>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();  // Расширяем WebApp на весь экран
+
+        // Получаем информацию о пользователе
+        let userInfo = tg.initDataUnsafe?.user;
+        if (userInfo) {
+            document.getElementById("user-info").innerText = `Привет, ${userInfo.first_name}!`;
+        } else {
+            document.getElementById("user-info").innerText = "Не удалось получить данные пользователя.";
+        }
+
+        // Функция закрытия WebApp
+        function closeWebApp() {
+            tg.close();
+        }
+    </script>
+
+</body>
+</html>

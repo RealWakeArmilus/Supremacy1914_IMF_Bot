@@ -37,6 +37,14 @@ class Match(Model):
     type_map = fields.CharField(max_length=50)
 
 
+class Certificates(Model):
+    id = fields.IntField(pk=True)
+    user = fields.ForeignKeyField('models.User', related_name='certificates')
+    base_one = fields.BooleanField(default=False)
+    base_two = fields.BooleanField(default=False)
+    base_three = fields.BooleanField(default=False)
+
+
 # ---------------------
 # Менеджеры таблиц
 # ---------------------
@@ -67,6 +75,19 @@ class UserManager(DatabaseManager):
                     'start_premium': start_premium if start_premium else datetime.min,
                     'end_premium': end_premium if end_premium else datetime.min,
                     'count_premium': count_premium
+                }]
+            )
+
+            user_obj = await User.get(telegram_id=telegram_id)
+
+            # Создаем запись в таблице Certificates
+            await self.insert(
+                model=Certificates,
+                data=[{
+                    "user": user_obj,  # Передаем id пользователя
+                    "base_one": False,
+                    "base_two": False,
+                    "base_three": False
                 }]
             )
         finally:
@@ -194,5 +215,12 @@ class MatchesManager(DatabaseManager):
             await close_db()
 
 
-
-
+class CertificatesManager(DatabaseManager):
+    async def get_certificates(self, telegram_id: int):
+        """Возвращает данные по всем сертификатам конкретного пользователя"""
+        try:
+            await init_master_db()
+            user_obj = await User.get(telegram_id=telegram_id)
+            return await self.fetch_records(Certificates, {"user": user_obj.id}, single=True)
+        finally:
+            await close_db()

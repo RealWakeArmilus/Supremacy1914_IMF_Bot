@@ -16,8 +16,6 @@ from app.config import CHANNEL_USERNAME
 
 # ManagerDatabase
 from app.DatabaseWork.models_master import UserManager
-from app.DatabaseWork.models_master import MatchesManager
-from app.DatabaseWork.models_match import MatchManager
 
 # Для передачи сигнала в данный файл, что запуск команд идет здесь
 logger = logging.getLogger(__name__)
@@ -26,14 +24,14 @@ user_manager = UserManager()
 
 # import routers from logical_blocks
 from app.logical_blocks.accounts.account import router as account_router
-from app.logical_blocks.accounts.owner.setting_match import router as created_match_router
-from app.logical_blocks.settings_match import router as settings_match_router
+from app.logical_blocks.accounts.owner.setting_match import router as setting_match_router
+from app.logical_blocks.certificates.certificates import router as cerificates_router
 from app.logical_blocks.choice_country import router as choice_state_router
 
 # connect routers from logical_blocks
 router.include_router(account_router)
-router.include_router(created_match_router)
-router.include_router(settings_match_router)
+router.include_router(setting_match_router)
+router.include_router(cerificates_router)
 router.include_router(choice_state_router)
 
 

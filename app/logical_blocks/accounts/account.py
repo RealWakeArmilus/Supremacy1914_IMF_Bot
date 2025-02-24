@@ -38,13 +38,9 @@ async def start_open_account(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-
     if data_user['is_free']:
         status = 'Free'
-        if data_user['is_premium']:
-            keyboard_task = kb.StartMenuAccount().premium()
-        else:
-            keyboard_task = kb.StartMenuAccount().free()
+        keyboard_task = kb.StartMenuAccount().free()
     elif data_user['is_partner']:
         keyboard_task = kb.StartMenuAccount().partner()
         status = 'Partner'
@@ -53,7 +49,7 @@ async def start_open_account(callback: CallbackQuery, state: FSMContext):
         status = 'Admin'
     elif data_user['is_owner']:
         keyboard_task = kb.StartMenuAccount().owner()
-        status = 'Owner - v. 0.2.1.6'
+        status = 'Owner - v. 0.2.2'
     else:
         keyboard_task = None
         status = '???'
