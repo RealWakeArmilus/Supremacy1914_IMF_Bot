@@ -4,38 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пользовательское соглашение</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             line-height: 1.5;
             margin: 5px;
             padding: 20px;
-            background-color: #f4f4f4;
+            background-color: #ffffff;
+            color: black;
         }
         .container {
-            max-width: 1920px;
-            background: white;
+            max-width: 800px;
+            background: #ffffff;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+            margin: auto;
         }
         h1, h2 {
-            color: #333;
+            color: black;
         }
         h1 {
             text-align: center;
         }
         p, ul {
-            color: #555;
+            color: black;
         }
         ul {
             padding-left: 20px;
+        }
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid black;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.3s;
+            background: white;
+            color: black;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: black;
+            color: white;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <div class="btn-container">
+        <button onclick="openCertificates()">Назад к сертификатам</button>
+        </div>
+
         <h1>Пользовательское соглашение</h1>
         <h2>1. Общие положения</h2>
         <p>1.1. Настоящее Пользовательское соглашение (далее — "Соглашение") регулирует отношения между ИП Артемьев Эмиль Александрович (далее — "Администрация") и пользователем (далее — "Пользователь") в рамках использования Telegram-бота @Supremacy1914_IMF_Bot (далее — "Сервис").</p>
@@ -121,5 +149,11 @@
         <p>11.1. Услуги оплачиваются заранее и вступают в действие после их выдачи администрацией и активации пользователями.</p>
         <p>11.2. В случае задержки платежей Администрация вправе потребовать оплаты 15% сверх текущей базовой ставки. Кроме того, Администрация вправе немедленно прекратить оказывать услуги и отключить и деактивировать Пользователя.</p>
     </div>
+
+    <script>
+        function openCertificates() {
+            window.location.href = "https://realwakearmilus.github.io/Supremacy1914_IMF_Bot/";
+        }
+    </script>
 </body>
 </html>
