@@ -53,7 +53,7 @@ async def cmd_start(message: Message, state: FSMContext):
     if data_user is None:
         text = (
             '<b>Используя бот вы соглашаетесь соблюдать следующие условия:</b>\n\n'
-            '<i><a href="ссылка">Пользовательское соглашение</a></i>\n'
+            '<i><a href="https://realwakearmilus.github.io/Supremacy1914_IMF_Bot/documents_bot/user_agreement.html">Пользовательское соглашение</a></i>\n'
             '<i><a href="ссылка">Политика конфиденциальности</a></i>'
         )
         await message.answer(
