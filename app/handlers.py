@@ -26,7 +26,7 @@ user_manager = UserManager()
 
 # import routers from logical_blocks
 from app.logical_blocks.accounts.account import router as account_router
-from app.logical_blocks.accounts.owner.created_match import router as created_match_router
+from app.logical_blocks.accounts.owner.setting_match import router as created_match_router
 from app.logical_blocks.settings_match import router as settings_match_router
 from app.logical_blocks.choice_country import router as choice_state_router
 
@@ -35,28 +35,6 @@ router.include_router(account_router)
 router.include_router(created_match_router)
 router.include_router(settings_match_router)
 router.include_router(choice_state_router)
-
-
-@router.message(Command('test'))
-async def cmd_start(message: Message):
-    try:
-        number_match = 1234567
-        type_map = 'Великая война'
-
-        master_match_manager = MatchesManager()
-        created_num = await master_match_manager.create_match(
-            number_match=number_match,
-            type_map=type_map
-        )
-        logger.info(f'created_num: {created_num}')
-
-        if not created_num:
-            raise Exception("Ошибка: матч не был записан в test_master.db!")
-
-        match_manager = MatchManager()
-        await match_manager.initialize_match(number_match=number_match)
-    except Exception as error:
-        await message.answer(str(error))
 
 
 @router.message(Command('start'))
@@ -132,6 +110,11 @@ async def check_sub_again(callback: CallbackQuery, state: FSMContext):
         await callback.answer("❌ Вы еще не подписались!", show_alert=True)
 
 
+@router.callback_query(lambda c: c.data == "menu")
+async def check_sub_again(callback: CallbackQuery, state: FSMContext):
+    await menu_open(message=callback.message, state=state)
+
+
 @router.message(Command('menu'))
 async def menu_open(message: Message, state: FSMContext):
     user_id = message.from_user.id
@@ -149,6 +132,6 @@ async def menu_open(message: Message, state: FSMContext):
         await message_manager.send_photo(
             obj=message,
             photo_path=photo_path,
-            keyboard=keyboard
+            keyboard=keyboard,
+            remove_previous=True
         )
-

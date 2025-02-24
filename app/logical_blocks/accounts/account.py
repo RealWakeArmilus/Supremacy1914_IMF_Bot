@@ -38,39 +38,50 @@ async def start_open_account(callback: CallbackQuery, state: FSMContext):
         )
         return
 
+
     if data_user['is_free']:
-        keyboard_task = kb.StartMenuAccount().free()
         status = 'Free'
-        count_premium = data_user['count_premium']
-    elif data_user['is_premium']:
-        keyboard_task = kb.StartMenuAccount().premium()
-        status = 'Premium'
-        count_premium = data_user['count_premium']
+        if data_user['is_premium']:
+            keyboard_task = kb.StartMenuAccount().premium()
+        else:
+            keyboard_task = kb.StartMenuAccount().free()
+
     elif data_user['is_partner']:
         keyboard_task = kb.StartMenuAccount().partner()
         status = 'Partner'
-        count_premium = data_user['count_premium']
+
     elif data_user['is_admin']:
         keyboard_task = kb.StartMenuAccount().admin()
         status = 'Admin'
-        count_premium = data_user['count_premium']
+
     elif data_user['is_owner']:
         keyboard_task = kb.StartMenuAccount().owner()
-        status = 'Owner - v. 0.2.1.1'
-        count_premium = data_user['count_premium']
+        status = 'Owner - v. 0.2.1.3'
+
     else:
         keyboard_task = None
         status = '???'
         count_premium = 0
 
-    keyboard = await keyboard_task
+    if data_user['is_premium']:
+        premium = f'<b>Активирован до:</b> {data_user["end_premium"]}'
+    else:
+        premium = '<b>Не активирован:</b> -'
+
+    count_premium = data_user['count_premium']
+
+    if keyboard_task:
+        keyboard = await keyboard_task
+    else:
+        keyboard = None
 
     photo_path = 'image/Price_list_bot.png'
     text = (
         '<b>Ваш баланс:</b> 0 💎\n'
         f'<b>Ваш статус:</b> {status}\n\n'
-        f'<b>Premium в запасе:</b> {count_premium}\n\n'
-        '<b>Чтобы вернуться к меню введите: /menu</b>'
+        '<i>Информация по Premium:</i>\n'
+        f'{premium}\n'
+        f'<b>Premium в запасе:</b> {count_premium}'
     )
 
     await message_manager.send_photo(

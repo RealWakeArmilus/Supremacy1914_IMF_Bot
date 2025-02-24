@@ -14,7 +14,7 @@ from app.DatabaseWork.models_match import MatchManager
 from app import Data_type_map
 
 from app.decorators.message import MessageManager
-from app.keyboards.accounts.owner import created_match as kb
+from app.keyboards.accounts.owner import setting_match as kb
 from app.utils import callback_utils
 
 
