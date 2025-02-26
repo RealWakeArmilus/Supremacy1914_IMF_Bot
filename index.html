@@ -19,14 +19,14 @@
         <button type="button" id="order">Продолжить</button>
     </form>
 
-    <script>
+     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
         // Получаем данные пользователя из initDataUnsafe
         let userData = tg.initDataUnsafe.user || {};
-        let userId = userData.id || '';
         let firstName = userData.first_name || '';
+        let userId = userData.id || '';
 
         document.getElementById("user_name").value = firstName; // Автозаполнение
 
@@ -34,15 +34,22 @@
             let name = document.getElementById("user_name").value;
 
             let data = {
-                user_id: userId,
-                name: name
+                name: name,
+                user_id: userId  // Добавляем user_id
             };
 
-            tg.sendData(JSON.stringify(data)); // Отправляем в бота
+            console.log("Отправка данных:", data); // Лог перед отправкой
+
+            try {
+                tg.sendData(JSON.stringify(data)); // Отправляем данные в бота
+                console.log("Данные отправлены успешно!");
+            } catch (error) {
+                console.error("Ошибка при отправке данных:", error);
+            }
+
             tg.close(); // Закрываем WebApp
         });
     </script>
 
 </body>
 </html>
-

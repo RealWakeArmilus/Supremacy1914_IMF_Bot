@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -140,17 +140,20 @@ async def menu_open(message: Message, state: FSMContext):
 import json
 
 
-@router.message(content_types=['web_app_data'])
+@router.message(F.web_app_data)
 async def web_app_data_handler(message: Message, state: FSMContext):
     try:
         res = json.loads(message.web_app_data.data)
         user_id = res.get("user_id")
         name = res.get("name")
 
+        print(f"🔹 Данные получены: {res}")  # Лог в консоль
+
         if user_id and name:
-            await message.answer(f"✅ Данные получены:\n user: {name}\n user_id: {user_id}")
+            await message.answer(f"✅ Данные получены:\n👤 user: {name}\n🆔 user_id: {user_id}")
         else:
             await message.answer("⚠ Ошибка! Данные некорректны.")
 
     except Exception as e:
+        print(f"❌ Ошибка обработки данных: {e}")  # Лог ошибки
         await message.answer(f"⚠ Ошибка обработки данных: {str(e)}")
