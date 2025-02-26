@@ -13,25 +13,36 @@
         <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSX_ofpba4K9Pxwe-TsHBav9ttso19KRqYhOw&s">
         <p>Текст</p>
     </div>
-    <form>
+
+    <form id="dataForm">
         <input type="text" placeholder="Имя" id="user_name">
-        <button id="order">Продолжить</button>
+        <button type="button" id="order">Продолжить</button>
     </form>
+
     <script>
         let tg = window.Telegram.WebApp;
-        let order = document.getElementById("order");
         tg.expand();
 
+        // Получаем данные пользователя из initDataUnsafe
+        let userData = tg.initDataUnsafe.user || {};
+        let userId = userData.id || '';
+        let firstName = userData.first_name || '';
 
-        buy.
-        document.getElementByid("user_name").value = tg.initDataUnsafe.user.first_name
+        document.getElementById("user_name").value = firstName; // Автозаполнение
 
-        let data = {
-            name: name
-        }
-        tg.sendData(JSON.stringify(data));
-        tg.close();
+        document.getElementById("order").addEventListener("click", function () {
+            let name = document.getElementById("user_name").value;
+
+            let data = {
+                user_id: userId,
+                name: name
+            };
+
+            tg.sendData(JSON.stringify(data)); // Отправляем в бота
+            tg.close(); // Закрываем WebApp
+        });
     </script>
 
 </body>
 </html>
+

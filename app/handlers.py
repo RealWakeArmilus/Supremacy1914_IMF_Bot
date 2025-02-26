@@ -141,6 +141,16 @@ import json
 
 
 @router.message(content_types=['web_app_data'])
-async def web_app(message: Message):
-    res = json.loads(message.web_app_data.data)
-    await message.answer(f"{res}")
+async def web_app_data_handler(message: Message, state: FSMContext):
+    try:
+        res = json.loads(message.web_app_data.data)
+        user_id = res.get("user_id")
+        name = res.get("name")
+
+        if user_id and name:
+            await message.answer(f"✅ Данные получены:\n user: {name}\n user_id: {user_id}")
+        else:
+            await message.answer("⚠ Ошибка! Данные некорректны.")
+
+    except Exception as e:
+        await message.answer(f"⚠ Ошибка обработки данных: {str(e)}")
