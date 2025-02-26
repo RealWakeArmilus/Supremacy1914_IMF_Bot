@@ -3,105 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сертификаты</title>
+    <title>Main</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-            background-color: #1E1E1E;
-            color: white;
-        }
-        .container {
-            padding: 20px;
-            background: #2A2A2A;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
-            max-width: 400px;
-            margin: auto;
-            position: relative;
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 14px;
-            color: #888;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-        .close-btn:hover {
-            color: #bbb;
-        }
-        .close-btn span {
-            margin-left: 5px;
-        }
-        .cert-buttons {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        .btn {
-            padding: 14px;
-            font-size: 18px;
-            border: none;
-            cursor: pointer;
-            border-radius: 10px;
-            transition: 0.3s;
-            width: 100%;
-            max-width: 300px;
-            margin: auto;
-            font-weight: bold;
-            background: linear-gradient(145deg, #222222, #292929);
-            box-shadow: 4px 4px 10px #191919, -4px -4px 10px #2f2f2f;
-            color: white;
-        }
-        .btn:hover {
-            background: linear-gradient(145deg, #292929, #222222);
-            box-shadow: inset 2px 2px 6px #1a1a1a, inset -2px -2px 6px #323232;
-        }
-    </style>
 </head>
 <body>
-
-    <div class="container">
-        <div class="close-btn" onclick="closeWebApp()">
-            &#10006;<span>Закрыть</span>
-        </div>
-        <h2>Ваши сертификаты</h2>
-        <p id="user-info">Загрузка...</p>
-        <button onclick="openUserAgreement()">Пользовательское соглашение</button>
-        <div class="cert-buttons">
-            <button class="btn" onclick="location.href='https://example.com/beginner-course'">Начинающий</button>
-            <button class="btn" onclick="location.href='https://example.com/intermediate-course'">Средний</button>
-            <button class="btn" onclick="location.href='https://example.com/advanced-course'">Продвинутый</button>
-        </div>
+    <div>
+        <h1>Главная</h1>
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSX_ofpba4K9Pxwe-TsHBav9ttso19KRqYhOw&s">
+        <p>Текст</p>
     </div>
-
+    <form>
+        <input type="text" placeholder="Имя" id="user_name">
+    </form>
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand();  // Расширяем WebApp на весь экран
 
-        // Получаем информацию о пользователе
-        let userInfo = tg.initDataUnsafe?.user;
-        if (userInfo) {
-            document.getElementById("user-info").innerText = `Привет, ${userInfo.first_name}!`;
-        } else {
-            document.getElementById("user-info").innerText = "Не удалось получить данные пользователя.";
-        }
 
-        // Функция закрытия WebApp
-        function closeWebApp() {
-            tg.close();
-        }
-
-        // Функция открытия страницы "Пользовательское соглашение"
-        function openUserAgreement() {
-            window.location.href = "documents_bot/user_agreement.html";
-        }
+        document.getElementByid("user_name").value = tg.initDataUnsafe.first_name
     </script>
 
 </body>
