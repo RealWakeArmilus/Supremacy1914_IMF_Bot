@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Main</title>
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -14,12 +15,22 @@
     </div>
     <form>
         <input type="text" placeholder="Имя" id="user_name">
+        <button id="order">Продолжить</button>
     </form>
     <script>
         let tg = window.Telegram.WebApp;
+        let order = document.getElementById("order");
+        tg.expand();
 
 
-        document.getElementByid("user_name").value = tg.initDataUnsafe.first_name
+        buy.
+        document.getElementByid("user_name").value = tg.initDataUnsafe.user.first_name
+
+        let data = {
+            name: name
+        }
+        tg.sendData(JSON.stringify(data));
+        tg.close();
     </script>
 
 </body>

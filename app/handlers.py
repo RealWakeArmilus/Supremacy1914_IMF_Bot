@@ -25,13 +25,15 @@ user_manager = UserManager()
 # import routers from logical_blocks
 from app.logical_blocks.accounts.account import router as account_router
 from app.logical_blocks.accounts.owner.setting_match import router as setting_match_router
-from app.logical_blocks.certificates.certificates import router as cerificates_router
+from app.logical_blocks.certificates.certificates import router as certificates_router
+from app.logical_blocks.accounts.free.become_premium import router as become_premium_router
 from app.logical_blocks.choice_country import router as choice_state_router
 
 # connect routers from logical_blocks
 router.include_router(account_router)
 router.include_router(setting_match_router)
-router.include_router(cerificates_router)
+router.include_router(certificates_router)
+router.include_router(become_premium_router)
 router.include_router(choice_state_router)
 
 
@@ -133,3 +135,12 @@ async def menu_open(message: Message, state: FSMContext):
             keyboard=keyboard,
             remove_previous=True
         )
+
+
+import json
+
+
+@router.message(content_types=['web_app_data'])
+async def web_app(message: Message):
+    res = json.loads(message.web_app_data.data)
+    await message.answer(f"{res}")
