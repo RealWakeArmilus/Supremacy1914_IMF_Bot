@@ -16,10 +16,11 @@
 
     <form id="dataForm">
         <input type="text" placeholder="Имя" id="user_name">
-        <button type="button" id="order">Продолжить</button>
+        <input type="text" name="login" placeholder="Телефон или email" required>
+        <button type="button" id="order">Войти</button>
     </form>
 
-     <script>
+    <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
 
