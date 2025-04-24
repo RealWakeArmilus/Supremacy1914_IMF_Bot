@@ -5,8 +5,7 @@ import pytz
 import logging
 from typing import List, Dict, Any, Optional
 
-# from SPyderSQL import AsyncSQLite
-from SPyderSQL import SecurityAsyncSQLite, sanitize_table_name, sanitize_column_names
+from SPyderSQL import AsyncSQLite
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +14,7 @@ logger = logging.getLogger(__name__)
 MASTER_DB_PATH = 'database/master.db'
 
 
-# SPyderSQLite = AsyncSQLite
-SecuritySPyderSQLite = SecurityAsyncSQLite
+SPyderSQLite = AsyncSQLite
 
 
 COUNTRIES_BY_TYPE_MATCH = {
@@ -76,177 +74,76 @@ class DatabaseManager:
         DatabaseManager.count += 1
 
         if database_path:
-            self.db = SecuritySPyderSQLite(f'database/{database_path}.db')
-            # self.SPyderSQLite = SPyderSQLite(f'database/{database_path}.db')
+            self.SPyderSQLite = SPyderSQLite(f'database/{database_path}.db')
         else:
-            self.db = SecuritySPyderSQLite(MASTER_DB_PATH)
-            # self.SPyderSQLite = SPyderSQLite(MASTER_DB_PATH)
+            self.SPyderSQLite = SPyderSQLite(MASTER_DB_PATH)
 
 
     def __del__(self):
         DatabaseManager.count -= 1
 
     def __repr__(self):
-        return f"DatabaseManager('count:{self.count}', 'database_path:{self.db}')"
+        return f"DatabaseManager('count:{self.count}', 'database_path:{self.SPyderSQLite}')"
 
     def __str__(self):
-        return f"count:{self.count}', database_path:{self.db}"
+        return f"count:{self.count}', database_path:{self.SPyderSQLite}"
 
 
-    async def create(self, table_name: str, columns: list[str]):
+    async def create(self, table_name: str, columns: dict):
         """Создает таблицу в базе данных."""
-        await self.db.connect()
+        await self.SPyderSQLite.create(
+            name_table=table_name,
+            append_columns=columns,
+            id_primary_key=True
+        ).execute()
 
-        name_table = sanitize_table_name(table_name=table_name)
-        column_names = sanitize_column_names(columns=columns)
+    async def insert(self, table_name: str, columns: List[str], values: tuple):
+        """Вставляет запись в таблицу."""
+        await self.SPyderSQLite.insert(
+            name_table=table_name,
+            names_columns=columns
+        ).execute(parameters=values)
 
-        await self.db.execute(f"""
-            CREATE TABLE IF NOT EXISTS {name_table} (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                {column_names}
-            )
-        """)
+    async def select(self, table_name: str, columns: List[str] = None, where_clause: dict = None):
+        """Выбирает записи из таблицы."""
+        if columns and where_clause is None:
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+                names_columns=columns,
+            ).execute()
 
-        await self.db.close()
+        elif where_clause and columns is None:
+            return await self.SPyderSQLite.select(
+                name_table=table_name
+            ).where(conditions=where_clause).execute()
 
-        # await self.db.create(
-        #     name_table=table_name,
-        #     append_columns=columns,
-        #     id_primary_key=True
-        # ).execute()
+        elif None is (columns, where_clause):
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+            ).execute()
 
-    async def insert(self, table_name: str, columns: List[str], values: tuple | List[tuple]):
-        """
-        Устанавливает одну или несколько записей сразу в таблицу.
-
-        :param table_name: Название таблицы
-        :param columns: Названия колонок
-        :param values: Данные для заполнения колонок. tuple - добавление по одной записи | List[tuple, tuple ...] - быстрое добавление нескольких записей сразу
-        """
-        await self.db.connect()
-
-        name_table = sanitize_table_name(table_name=table_name)
-        column_names = sanitize_column_names(columns=columns)
-        placeholders = ", ".join("?" * len(columns)) if columns else "?"
-
-        if isinstance(values, tuple):
-            await self.db.execute(f"""
-                INSERT INTO {name_table} ({", ".join(column_names) if column_names else ""})
-                VALUES ({placeholders})
-            """, values)
-
-        elif isinstance(values, list):
-            await self.db.execute_many(f"""
-                INSERT INTO {name_table} ({", ".join(column_names) if column_names else ""})
-                VALUES ({placeholders})
-            """, values)
-
-        await self.db.close()
-
-        # await self.db.insert(
-        #     name_table=table_name,
-        #     names_columns=columns
-        # ).execute(parameters=values)
-
-    async def select_fetchall(self, table_name: str, columns: List[str] = None, where_clause: dict = None) -> list:
-        """Возвращает список данных всех записей из таблицы."""
-        await self.db.connect()
-
-        name_table = sanitize_table_name(table_name=table_name)
-        column_names = '*'
-
-        if columns:
-            column_names = sanitize_column_names(columns=columns)
-
-        if where_clause is None:
-            query = f"SELECT {column_names} FROM {name_table}"
-            records = await self.db.fetchall(query)
-
-        elif isinstance(where_clause, dict):
-            where_clause_str = " AND ".join([f"{col} = ?" for col in where_clause.keys()]) if where_clause else ""
-            where_values = tuple(where_clause.values())
-
-            query = f"SELECT {column_names} FROM {name_table} WHERE {where_clause_str}"
-            records = await self.db.fetchall(query, where_values)
+        elif columns and where_clause:
+            return await self.SPyderSQLite.select(
+                name_table=table_name,
+                names_columns=columns,
+            ).where(conditions=where_clause).execute()
 
         else:
-            raise TypeError('в select_fetchall: where_clause должен быть словарем')
-
-        await self.db.close()
-
-        finally_records = [dict(record) for record in records] if records else []
-
-        print(f'select finally_records: {finally_records}')
-
-        return finally_records
-
-        # if columns and where_clause is None:
-        #     return await self.db.select(
-        #         name_table=table_name,
-        #         names_columns=columns,
-        #     ).execute()
-        #
-        # elif where_clause and columns is None:
-        #     return await self.db.select(
-        #         name_table=table_name
-        #     ).where(conditions=where_clause).execute()
-        #
-        # elif None is (columns, where_clause):
-        #     return await self.db.select(
-        #         name_table=table_name,
-        #     ).execute()
-        #
-        # elif columns and where_clause:
-        #     return await self.db.select(
-        #         name_table=table_name,
-        #         names_columns=columns,
-        #     ).where(conditions=where_clause).execute()
-        #
-        # else:
-        #     logger.error('Что-то пошло не так. проблема в методе SELECT в DatabaseManager из app.DatabaseWork.database.py')
-        #     return None
+            logger.error('Что-то пошло не так. проблема в методе SELECT в DatabaseManager из app.DatabaseWork.database.py')
+            return None
 
     async def delete(self, table_name: str, where_clause: dict):
         """Удаляет записи из таблицы."""
-        await self.db.connect()
-
-        name_table = sanitize_table_name(table_name=table_name)
-
-        where_clause_str = " AND ".join([f"{col} = ?" for col in where_clause.keys()]) if where_clause else ""
-        where_values = tuple(where_clause.values())
-
-        query = f"DELETE FROM {name_table} WHERE {where_clause_str}"
-        await self.db.execute(query, where_values)
-
-        await self.db.close()
-
-        # await self.db.delete(
-        #     name_table=table_name,
-        # ).where(where_clause).execute()
+        await self.SPyderSQLite.delete(
+            name_table=table_name,
+        ).where(where_clause).execute()
 
     async def update(self, table_name: str, data_set: Dict[str, Any], where_clause: Dict[str, Any]):
         """Обновляет записи в таблице."""
-        await self.db.connect()
-
-        try:
-            name_table = sanitize_table_name(table_name)
-
-            # Безопасная обработка имен колонок
-            set_clause = ", ".join(f"{col} = ?" for col in data_set)
-            where_clause_str = " AND ".join(f"{col} = ?" for col in where_clause)
-
-            query = f"UPDATE {name_table} SET {set_clause} WHERE {where_clause_str}"
-            values = tuple(data_set.values()) + tuple(where_clause.values())
-
-            await self.db.execute(query, values)
-        finally:
-            await self.db.close()
-
-
-        # await self.db.update(
-        #     name_table=table_name,
-        #     data_set=data_set
-        # ).where(where_clause).execute()
+        await self.SPyderSQLite.update(
+            name_table=table_name,
+            data_set=data_set
+        ).where(where_clause).execute()
 
 
     async def update_course_alone_currency(self, data_currency: dict):
@@ -297,7 +194,7 @@ class DatabaseManager:
 
     async def get_admins_telegram_id(self) -> List[int] | None:
         """Возвращает список информации администрации из таблицы users из master.db"""
-        data_admins = await self.select_fetchall(
+        data_admins = await self.select(
             table_name='users',
             where_clause={'admin': True}
         )
@@ -313,7 +210,7 @@ class DatabaseManager:
 
     async def match_exists(self, number_match: int) -> bool:
         """Проверяет существование матча по номеру."""
-        result = await self.select_fetchall(
+        result = await self.select(
             table_name='match',
             columns=['number'],
             where_clause={'number': number_match}
@@ -331,7 +228,7 @@ class DatabaseManager:
 
     async def get_all_match_numbers(self) -> List[int] | None:
         """Возвращает список всех номеров матчей."""
-        matches = await self.select_fetchall(
+        matches = await self.select(
             table_name='match',
             columns=['number']
         )
@@ -356,7 +253,7 @@ class DatabaseManager:
             'current_course'
         ]
 
-        data_currencies = await self.select_fetchall(
+        data_currencies = await self.select(
             table_name='currency',
             columns=column_names
         )
@@ -367,12 +264,12 @@ class DatabaseManager:
         """Инициализирует базу данных master.db и таблицы в ней [users, match]"""
         tables = {
             'users': {
-                'telegram_id INTEGER,',
-                'admin BLOB'
+                'telegram_id': 'INTEGER',
+                'admin': 'BLOB'
             },
             'match': {
-                'number INTEGER,',
-                'type_map TEXT'
+                'number': 'INTEGER',
+                'type_map': 'TEXT'
             }
         }
 
@@ -392,55 +289,55 @@ class DatabaseManager:
         :var set_match(number_match, type_match): Добавляет новый матч в таблицу match в master.db.
         """
         tables = {
-            'countries': [
-                'name TEXT,',
-                'telegram_id INTEGER,',
-                'admin BLOB'
-            ],
-            'country_choice_requests': [
-                'telegram_id INTEGER,',
-                'number_match INTEGER,',
-                'name_country TEXT,',
-                'unique_word TEXT,',
-                'admin_decision_message_id INTEGER'
-            ],
-            'currency': [
-                'country_id INTEGER,',
-                'name TEXT,',
-                'tick  TEXT,',
-                'following_resource TEXT,',
-                'course_following REAL,',
-                'capitalization INTEGER,',
-                'emission REAL,',
-                'current_amount REAL,',
-                'current_course REAL'
-            ],
-            'currency_emission_requests': [
-                'number_match INTEGER,',
-                'telegram_id INTEGER,',
-                'country_id INTEGER,',
-                'name_currency TEXT,',
-                'tick_currency TEXT,',
-                'following_resource TEXT,',
-                'course_following REAL,',
-                'capitalization INTEGER,',
-                'amount_emission_currency REAL,',
-                'date_request_creation TEXT,',
-                'status_confirmed BLOB,',
-                'date_confirmed TEXT,',
-                'message_id_delete INTEGER'
-            ],
-            'bank_transfer_requests': [
-                'number_match INTEGER,',
-                'payer_country_id INTEGER,',
-                'beneficiary_country_id INTEGER,',
-                'currency_id INTEGER,',
-                'amount_currency_transfer REAL,',
-                'comment TEXT,',
-                'date_request_creation TEXT,',
-                'status_cancelled BLOB,',
-                'date_cancelled TEXT'
-            ]
+            'countries': {
+                'name': 'TEXT',
+                'telegram_id': 'INTEGER',
+                'admin': 'BLOB'
+            },
+            'country_choice_requests': {
+                'telegram_id': 'INTEGER',
+                'number_match': 'INTEGER',
+                'name_country': 'TEXT',
+                'unique_word': 'TEXT',
+                'admin_decision_message_id': 'INTEGER'
+            },
+            'currency': {
+                'country_id': 'INTEGER',
+                'name': 'TEXT',
+                'tick': 'TEXT',
+                'following_resource': 'TEXT',
+                'course_following': 'REAL',
+                'capitalization': 'INTEGER',
+                'emission': 'REAL',
+                'current_amount': 'REAL',
+                'current_course': 'REAL'
+            },
+            'currency_emission_requests': {
+                'number_match': 'INTEGER',
+                'telegram_id': 'INTEGER',
+                'country_id': 'INTEGER',
+                'name_currency': 'TEXT',
+                'tick_currency': 'TEXT',
+                'following_resource': 'TEXT',
+                'course_following': 'REAL',
+                'capitalization': 'INTEGER',
+                'amount_emission_currency': 'REAL',
+                'date_request_creation': 'TEXT',
+                'status_confirmed': 'BLOB',
+                'date_confirmed': 'TEXT',
+                'message_id_delete': 'INTEGER'
+            },
+            'bank_transfer_requests': {
+                'number_match': 'INTEGER',
+                'payer_country_id': 'INTEGER',
+                'beneficiary_country_id': 'INTEGER',
+                'currency_id': 'INTEGER',
+                'amount_currency_transfer': 'REAL',
+                'comment': 'TEXT',
+                'date_request_creation': 'TEXT',
+                'status_cancelled': 'BLOB',
+                'date_cancelled': 'TEXT'
+            }
         }
 
         for table_name, columns in tables.items():
@@ -498,7 +395,7 @@ class DatabaseManager:
         :return:
         """
         if alone:
-            alone_record = await self.select_fetchall(
+            alone_record = await self.select(
                 table_name=name_table,
                 columns=column_names,
                 where_clause=where_clause
@@ -507,7 +404,7 @@ class DatabaseManager:
             return alone_record[0][column_names[0]]
 
         elif not alone:
-            much_records = await self.select_fetchall(
+            much_records = await self.select(
                 table_name=name_table,
                 columns=column_names,
                 where_clause=where_clause
@@ -711,7 +608,7 @@ class DatabaseManager:
             else:
                 raise Exception('Не правильно выбрано название таблицы заявок, для проверки заявки.')
 
-            data_requests = await self.select_fetchall(
+            data_requests = await self.select(
                 table_name=name_requests,
                 columns=column_names
             )
@@ -743,7 +640,7 @@ class DatabaseManager:
         """
         column_names = ['name', 'telegram_id']
 
-        data_country = await self.select_fetchall(
+        data_country = await self.select(
             table_name='countries',
             columns=column_names
         )
@@ -809,7 +706,7 @@ class DatabaseManager:
         """
         column_names = ['telegram_id', 'name_country', 'unique_word', 'admin_decision_message_id']
 
-        data_users = await self.select_fetchall(
+        data_users = await self.select(
             table_name='country_choice_requests',
             columns=column_names
         )
@@ -880,7 +777,7 @@ class DatabaseManager:
             else:
                 raise Exception('Не найдены искомые данные для поиска данных государства')
 
-            data_countries = await self.select_fetchall(
+            data_countries = await self.select(
                 table_name='countries',
                 columns=column_names,
                 where_clause=where_clause
@@ -933,7 +830,7 @@ class DatabaseManager:
             'country_id': data_country['country_id']
         }
 
-        data_currency = await self.select_fetchall(
+        data_currency = await self.select(
             table_name='currency',
             columns=column_names,
             where_clause=where_clause
@@ -977,7 +874,7 @@ class DatabaseManager:
             'message_id_delete'
         ]
 
-        data_requests = await self.select_fetchall(
+        data_requests = await self.select(
             table_name='currency_emission_requests',
             columns=column_names,
         )
@@ -1059,7 +956,7 @@ class DatabaseManager:
             elif name_currency == '' or tick_currency == '':
                 raise Exception('При проверке данных валюты, на совпадение, ничего не было введено для проверки')
 
-            parameters_currency = await self.select_fetchall(
+            parameters_currency = await self.select(
                 table_name='currency',
                 columns=column_names
             )
@@ -1330,7 +1227,7 @@ class DatabaseManager:
 
         column_names = ['currency_id', country_id]
 
-        data_currency_capitals = await self.select_fetchall(
+        data_currency_capitals = await self.select(
             table_name='currency_capitals',
             columns=column_names
         )
@@ -1443,7 +1340,7 @@ class DatabaseManager:
             f'currency_id': currency_id
         }
 
-        data_amount_capital_payer = await self.select_fetchall(
+        data_amount_capital_payer = await self.select(
             table_name='currency_capitals',
             columns=column_names,
             where_clause=where_clause
@@ -1552,7 +1449,7 @@ class DatabaseManager:
         if date_request_creation != '':
             where_clause['date_request_creation'] = date_request_creation
 
-        data_requests = await self.select_fetchall(
+        data_requests = await self.select(
             table_name='bank_transfer_requests',
             columns=column_names,
             where_clause=where_clause
@@ -1613,7 +1510,7 @@ class DatabaseManager:
                 column_names = ['current_amount']
                 where_clause = {'id': currency_id}
 
-                data_amount_national_currency_for_issuer = await self.select_fetchall(
+                data_amount_national_currency_for_issuer = await self.select(
                     table_name='currency',
                     columns=column_names,
                     where_clause=where_clause

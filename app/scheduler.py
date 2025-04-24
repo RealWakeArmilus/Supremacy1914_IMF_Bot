@@ -35,12 +35,8 @@ async def update_course_currency_for_alone_match(number_match: str):
             if data_currency:
                 await db_number_match_manager.update_course_alone_currency(data_currency=data_currency)
                 await view_runner_update_course_currency(message=f"№ матча {number_match}")
-
     except Exception as error:
         await view_runner_update_course_currency(message=f"{error}", error=True)
-
-    finally:
-        del data_currencies
 
 
 async def async_update_course_currency_for_all_match():
@@ -58,9 +54,6 @@ async def async_update_course_currency_for_all_match():
 
     except Exception as error:
         await view_runner_update_course_currency(message=f"{error}", error=True)
-
-    finally:
-        del all_match_numbers
 
 
 def update_course_currency_for_all_match():
